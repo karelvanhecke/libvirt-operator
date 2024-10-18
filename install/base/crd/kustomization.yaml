@@ -1,0 +1,8 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - libvirt.karelvanhecke.com_auths.yaml
+  - libvirt.karelvanhecke.com_hosts.yaml
+  - libvirt.karelvanhecke.com_volumes.yaml

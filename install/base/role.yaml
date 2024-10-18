@@ -1,0 +1,65 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: libvirt-operator
+  namespace: libvirt-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - libvirt.karelvanhecke.com
+  resources:
+  - auths
+  - hosts
+  - volumes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - libvirt.karelvanhecke.com
+  resources:
+  - auths/finalizers
+  - hosts/finalizers
+  - volumes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - libvirt.karelvanhecke.com
+  resources:
+  - auths/status
+  - volumes/status
+  verbs:
+  - get
+  - patch
+  - update
