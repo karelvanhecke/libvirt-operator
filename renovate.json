@@ -10,5 +10,6 @@
     "platformCommit": true,
     "postUpdateOptions": [
         "gomodTidy"
-    ]
+    ],
+    "repositories": ["karelvanhecke/libvirt-operator"]
 }
