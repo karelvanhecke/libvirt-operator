@@ -1,0 +1,14 @@
+{
+    "extends": [
+        "config:recommended",
+        "docker:pinDigests",
+        "helpers:pinGitHubActionDigests",
+        ":configMigration",
+        ":pinDevDependencies"
+    ],
+    "onboarding": false,
+    "platformCommit": true,
+    "postUpdateOptions": [
+        "gomodTidy"
+    ]
+}

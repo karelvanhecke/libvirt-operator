@@ -1,0 +1,23 @@
+---
+name: Release please
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get app token
+        uses: actions/create-github-app-token@5d869da34e18e7287c1daad50e0b8ea0f506ce69 # v1.11.0
+        id: app-token
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_KEY }}
+
+      - name: Run release-please
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
