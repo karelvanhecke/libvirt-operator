@@ -48,6 +48,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: OPERATOR_VERSION=${{ github.ref_name }}
 
       - name: Sign container
         run: cosign sign --yes ghcr.io/karelvanhecke/libvirt-operator@${{ steps.build.outputs.digest }}

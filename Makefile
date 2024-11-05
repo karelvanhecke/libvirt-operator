@@ -1,4 +1,4 @@
-OPERATOR_VERSION=v0.1.0-dev
+OPERATOR_VERSION?=dev
 KIND_VERSION=v0.24.0
 CONTROLLER_GEN_VERSION=v0.16.5
 KUBECTL_VERSION=v1.31.2
@@ -40,7 +40,7 @@ build-binary:
 		github.com/karelvanhecke/libvirt-operator/cmd/operator
 
 build-container:
-	@docker build -t ghcr.io/karelvanhecke/libvirt-operator:${OPERATOR_VERSION} .
+	@docker build --build-arg OPERATOR_VERSION=${OPERATOR_VERSION} -t ghcr.io/karelvanhecke/libvirt-operator:${OPERATOR_VERSION} .
 
 setup-kind:
 	@kind create cluster --name operator-dev && \
