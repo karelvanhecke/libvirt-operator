@@ -1,4 +1,5 @@
 FROM docker.io/golang:1.23-bookworm@sha256:2341ddffd3eddb72e0aebab476222fbc24d4a507c4d490a51892ec861bdb71fc AS build
+ARG OPERATOR_VERSION
 WORKDIR /usr/src/github.com/karelvanhecke/libvirt-operator
 
 COPY go.mod go.sum ./
