@@ -17,7 +17,7 @@ install-controller-gen:
 
 install-kubectl:
 	@mkdir -p ~/.local/bin && curl -o /tmp/kubectl -L https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl && \
-		sha256sum /tmp/kubectl | grep "$(curl -L https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256)" && \
+		sha256sum /tmp/kubectl | grep "$(curl -L https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl.sha256)" && \
 		chmod +x /tmp/kubectl && mv /tmp/kubectl ~/.local/bin
 
 gen-object:
@@ -32,6 +32,9 @@ gen-rbac:
 build:
 	@CGO_ENABLED=0 go build ./...
 
+test:
+	@CGO_ENABLED=0 go test ./...
+
 build-binary:
 	@CGO_ENABLED=0 go build -o bin/operator \
 		-ldflags "-s -w -X 'github.com/karelvanhecke/libvirt-operator/internal/version.version=$(OPERATOR_VERSION)' \
@@ -40,12 +43,17 @@ build-binary:
 		github.com/karelvanhecke/libvirt-operator/cmd/operator
 
 build-container:
-	@docker build --build-arg OPERATOR_VERSION=${OPERATOR_VERSION} -t ghcr.io/karelvanhecke/libvirt-operator:${OPERATOR_VERSION} .
+	@docker build --build-arg OPERATOR_VERSION=$(OPERATOR_VERSION) -t ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) .
 
-setup-kind:
-	@kind create cluster --name operator-dev && \
-		kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:${OPERATOR_VERSION} && \
-		kubectl apply --context kind-operator-dev -k install/development
+create-kind-cluster:
+	@kind create cluster --name operator-dev
 
-cleanup-kind:
+deploy-to-kind-cluster:
+	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) && \
+		mkdir -p ./install/development && \
+		OPERATOR_VERSION=$(OPERATOR_VERSION) envsubst < ./hack/kustomization.yaml.txt > ./install/development/kustomization.yaml && \
+		kubectl apply --context kind-operator-dev -k ./install/development && \
+		kubectl -n libvirt-operator wait --for=condition=Available=true deployment/libvirt-operator
+
+delete-kind-cluster:
 	@kind delete cluster --name operator-dev
