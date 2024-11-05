@@ -1,15 +1,9 @@
 {
     "extends": [
-        "config:recommended",
-        "docker:pinDigests",
-        "helpers:pinGitHubActionDigests",
-        ":configMigration",
-        ":pinDevDependencies"
+        "config:best-practices"       
     ],
-    "onboarding": false,
     "platformCommit": true,
     "postUpdateOptions": [
         "gomodTidy"
-    ],
-    "repositories": ["karelvanhecke/libvirt-operator"]
+    ]
 }
