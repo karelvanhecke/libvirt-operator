@@ -1,9 +1,0 @@
-{
-    "extends": [
-        "config:best-practices"
-    ],
-    "platformCommit": "enabled",
-    "postUpdateOptions": [
-        "gomodTidy"
-    ]
-}
