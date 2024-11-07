@@ -15,7 +15,7 @@
             "depNameTemplate": "ghcr.io/renovatebot/renovate",
             "datasourceTemplate": "docker",
             "matchStrings": [
-                "(?:renovate|RENOVATE)[_-](?:version|VERSION): (?<currentValue>[0-9.]+)(?<currentDigest>@sha256:[a-f0-9]+)?"
+                "(?:renovate|RENOVATE)[_-](?:version|VERSION): (?<currentValue>[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
             ]
         }
     ],
