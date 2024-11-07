@@ -17,11 +17,18 @@
             "matchStrings": [
                 "(?:renovate|RENOVATE)[_-](?:version|VERSION): (?<currentValue>[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
             ]
+        },
+        {
+            "customType": "regex",
+            "fileMatch": "^Makefile$",
+            "matchStrings": [
+                "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?:versioning=(?<versioning>[a-z-]+?))?\\s+.+_VERSION=(?<currentValue>v?[0-9.]+)"
+            ]
         }
     ],
     "packageRules": [
         {
-            "matchDepNames": "ghcr.io/renovatebot/renovate",
+            "matchCurrentVersion": ">=1.0.0",
             "matchUpdateTypes": ["minor","patch"],
             "automerge": true
         }
