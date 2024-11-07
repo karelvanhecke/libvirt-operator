@@ -1,0 +1,29 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:best-practices"],
+    "repositories": ["karelvanhecke/libvirt-operator"],
+    "requireConfig": "ignored",
+    "onboarding": false,
+    "platformCommit": "enabled",
+    "postUpdateOptions": [
+        "gomodTidy"
+    ],
+    "customManagers":[
+        {
+            "customType": "regex",
+            "fileMatch": "^\\.github/workflows/(?:ci|renovate)\\.yaml$",
+            "depNameTemplate": "ghcr.io/renovatebot/renovate",
+            "datasourceTemplate": "docker",
+            "matchStrings": [
+                "(?:renovate|RENOVATE)[_-](?:version|VERSION): (?<currentValue>[0-9.]+)(?<currentDigest>@sha256:[a-f0-9]+)?"
+            ]
+        }
+    ],
+    "packageRules": [
+        {
+            "matchDepNames": "ghcr.io/renovatebot/renovate",
+            "matchUpdateTypes": ["minor","patch"],
+            "automerge": true
+        }
+    ]
+}
