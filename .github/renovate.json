@@ -20,17 +20,10 @@
         },
         {
             "customType": "regex",
-            "fileMatch": "^Makefile$",
+            "fileMatch": "^(?:Makefile|.github/workflows/*.yaml$)",
             "matchStrings": [
-                "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?:versioning=(?<versioning>[a-z-]+?))?\\s+.+_VERSION=(?<currentValue>v?[0-9.]+)"
+                "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?:versioning=(?<versioning>[a-z-]+?))?\\s+.+_VERSION(?:=|: )'?(?<currentValue>v?[0-9.]+)'?"
             ]
-        },
-        {
-            "customType": "regex",
-            "fileMatch": "^(?:.github/workflows/ci.yaml|go.mod)$",
-            "matchStrings": ["(?:^go|go-version:) '?(?<currentValue>[0-9.]+)'?"],
-            "depNameTemplate": "go",
-            "datasourceTemplate": "golang-version"
         }
     ],
     "packageRules": [
@@ -38,6 +31,10 @@
             "matchCurrentVersion": "!/^0/",
             "matchUpdateTypes": ["minor","patch"],
             "automerge": true
+        },
+        {
+            "matchDatasources": ["golang-version"],
+            "rangeStrategy": "bump"
         },
         {
             "groupName": "go",
