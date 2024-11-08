@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Renovate
-        uses: renovatebot/github-action@7e1c0fa7cfd2c3e91b27cdd87ae09a6a0fafb5f2 # v41.0.0
+        uses: renovatebot/github-action@67a664fc9b4481b33a3eff6ee9edfb7a7b9dfa1e # v41.0.2
         with:
           configurationFile: .github/renovate.json
           renovate-version: 39.8.0@sha256:908a5b93cb7e9124cf8a866e87daaf3b02cc65b87035743ebe1b1aea06e636da
