@@ -24,5 +24,5 @@ jobs:
         uses: renovatebot/github-action@28bcd5c4900a4353b5c9af9e1bd61dd6377f0f0d # v40.3.5
         with:
           configurationFile: .github/renovate.json
-          renovate-version: 39.7.4@sha256:39812afb2d242da1aec2cc130b7a86a717dabeca40d5e74e57e632b3f429e4fa
+          renovate-version: 39.7.5@sha256:3de010f9d0adee856fd2d2a8085252f2643ffabea1d076ebf4a87038a393a1fc
           token: '${{ steps.app-token.outputs.token }}'
