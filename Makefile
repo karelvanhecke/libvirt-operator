@@ -8,7 +8,7 @@ KUBECTL_VERSION=v1.31.2
 HEADERFILE=./hack/boilerplate.go.txt
 ROLENAME=libvirt-operator
 
-.PHONY: install-kind install-controller-gen install-kubectl gen-object gen-crd gen-rbac
+.PHONY: install-tools install-kind install-controller-gen install-kubectl generators gen-object gen-crd gen-rbac
 
 install-tools: install-kind install-controller-gen install-kubectl
 
@@ -22,6 +22,8 @@ install-kubectl:
 	@mkdir -p ~/.local/bin && curl -o /tmp/kubectl -L https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl && \
 		sha256sum /tmp/kubectl | grep "$(curl -L https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/linux/amd64/kubectl.sha256)" && \
 		chmod +x /tmp/kubectl && mv /tmp/kubectl ~/.local/bin
+
+generators: gen-object gen-crd gen-rbac
 
 gen-object:
 	@controller-gen object:headerFile=$(HEADERFILE) paths=./api/...
