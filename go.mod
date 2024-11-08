@@ -1,6 +1,6 @@
 module github.com/karelvanhecke/libvirt-operator
 
-go 1.23.2
+go 1.23.3
 
 require (
 	github.com/digitalocean/go-libvirt v0.0.0-20241007203800-ad92148935b6
