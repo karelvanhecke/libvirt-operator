@@ -28,7 +28,7 @@
     ],
     "packageRules": [
         {
-            "matchCurrentVersion": "!/^0/",
+            "matchCurrentVersion": "!/^v?0/",
             "matchUpdateTypes": ["minor","patch"],
             "automerge": true
         },
