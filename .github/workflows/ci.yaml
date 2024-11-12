@@ -155,7 +155,7 @@ jobs:
 
       - name: Validate config
         env:
-          RENOVATE_VERSION: 39.11.0@sha256:1b86a3309306870d7321403f1db8b6013f9491fa7bcbb43516b41ecfdc35794c
+          RENOVATE_VERSION: 39.11.1@sha256:160950f13c97b208287dddaaa003401fc3ea6c31399ec9b43d4644a31663abe8
         run: >
           docker run --rm -v ./.github/renovate.json:/renovate.json
           --entrypoint renovate-config-validator
