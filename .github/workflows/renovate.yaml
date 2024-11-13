@@ -26,5 +26,5 @@ jobs:
           LOG_LEVEL: ${{ github.event_name == 'workflow_dispatch' && 'DEBUG' || 'INFO' }}
         with:
           configurationFile: .github/renovate.json
-          renovate-version: 39.11.7@sha256:fb15bd3a3b295384a9785938c9785538f7f365dcec4690886a43e4648d3f31ed
+          renovate-version: 39.12.0@sha256:37991e23a3fa394e5b22cf448351c99efc69040c266da711055bd6146e962381
           token: '${{ steps.app-token.outputs.token }}'
