@@ -47,5 +47,9 @@
             "matchDepNames": "go",
             "minimumReleaseAge": "1 day"
         }
+    ],
+    "timezone": "Europe/Brussels",
+    "schedule": [
+        "* 0-6 * * 6"
     ]
 }
