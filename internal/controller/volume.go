@@ -22,7 +22,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/digitalocean/go-libvirt"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/action"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
@@ -67,8 +66,7 @@ const (
 
 type VolumeReconciler struct {
 	client.Client
-	HostStore store.HostStore
-	Action    func(client *libvirt.Libvirt, name string, pool string, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (action.VolumeAction, error)
+	HostStore *store.HostStore
 }
 
 func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -124,7 +122,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	host, end := hostEntry.Session()
+	hClient, end := hostEntry.Session()
 	defer end()
 
 	var pool string
@@ -154,7 +152,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		size.Value = uint64(s.Value)
 	}
 
-	action, err := r.Action(host, volume.Namespace+":"+volume.Name, pool, size, &libvirtxml.StorageVolumeTargetFormat{Type: volume.Spec.Format})
+	action, err := action.NewVolumeAction(hClient, volume.Namespace+":"+volume.Name, pool, size, &libvirtxml.StorageVolumeTargetFormat{Type: volume.Spec.Format})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -202,7 +200,7 @@ func (r *VolumeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Volume{}).Complete(r)
 }
 
-func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action action.VolumeAction) error {
+func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
 	volumes := &v1alpha1.VolumeList{}
 	labelReq, err := labels.NewRequirement(LabelKeyBackingStore, selection.Equals, []string{volume.Name})
 	if err != nil {
@@ -229,7 +227,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 	return action.Delete()
 }
 
-func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, action action.VolumeAction) error {
+func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
 	switch {
 	case volume.Spec.Source != nil:
 		if err := action.WithSource(volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {

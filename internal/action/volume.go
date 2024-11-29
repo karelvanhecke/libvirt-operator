@@ -16,8 +16,202 @@ limitations under the License.
 
 package action
 
-type VolumeAction interface {
-	WithBackingStore(name string) error
-	WithSource(url string, checksum *string) error
-	Action
+import (
+	"crypto"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/digitalocean/go-libvirt"
+	"github.com/karelvanhecke/libvirt-operator/internal/host"
+	"github.com/karelvanhecke/libvirt-operator/internal/utils"
+	"libvirt.org/go/libvirtxml"
+)
+
+type VolumeAction struct {
+	host.Client
+	name  string
+	pool  libvirt.StoragePool
+	id    *libvirt.StorageVol
+	state *libvirtxml.StorageVolume
+
+	size         *libvirtxml.StorageVolumeSize
+	format       *libvirtxml.StorageVolumeTargetFormat
+	backingStore *libvirtxml.StorageVolumeBackingStore
+	source       *os.File
+}
+
+func NewVolumeAction(client host.Client, name string, pool string, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
+	p, err := client.StoragePoolLookupByName(pool)
+	if err != nil {
+		return nil, err
+	}
+
+	a := &VolumeAction{
+		Client: client,
+		name:   name,
+		pool:   p,
+		size:   size,
+		format: format,
+	}
+
+	v, err := a.StorageVolLookupByName(a.pool, a.name)
+	if err != nil {
+		if e, ok := err.(libvirt.Error); ok {
+			if e.Code == uint32(libvirt.ErrNoStorageVol) {
+				return a, nil
+			}
+		}
+		return nil, err
+	}
+
+	xml, err := a.StorageVolGetXMLDesc(v, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	state := &libvirtxml.StorageVolume{}
+	if err := state.Unmarshal(xml); err != nil {
+		return nil, err
+	}
+	a.id = &v
+	a.state = state
+	return a, nil
+}
+
+func (a *VolumeAction) State() bool {
+	return a.id != nil
+}
+
+func (a *VolumeAction) WithBackingStore(name string) error {
+	bs, err := a.StorageVolLookupByName(a.pool, name)
+	if err != nil {
+		return err
+	}
+
+	xml, err := a.StorageVolGetXMLDesc(bs, 0)
+	if err != nil {
+		return err
+	}
+
+	info := &libvirtxml.StorageVolume{}
+	if err := info.Unmarshal(xml); err != nil {
+		return err
+	}
+
+	a.backingStore = &libvirtxml.StorageVolumeBackingStore{
+		Path:   info.Target.Path,
+		Format: info.Target.Format,
+	}
+
+	if a.size == nil {
+		a.size = info.Capacity
+	}
+
+	return nil
+}
+
+func (a *VolumeAction) WithSource(url string, checksum *string) error {
+	// #nosec G107
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	a.source, err = os.CreateTemp("", "volume-source")
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(a.source, resp.Body); err != nil {
+		return err
+	}
+
+	if checksum != nil {
+		hashes := map[string]crypto.Hash{
+			"sha256": crypto.SHA256,
+			"sha512": crypto.SHA512,
+		}
+		c := strings.Split(strings.ToLower(*checksum), ":")
+		h, supported := hashes[c[0]]
+		if !supported {
+			return fmt.Errorf("unsupported hash: %s", *checksum)
+		}
+		hash := h.New()
+
+		if _, err := a.source.Seek(0, 0); err != nil {
+			return err
+		}
+		if _, err := io.Copy(hash, a.source); err != nil {
+			return err
+		}
+		if hashString := hex.EncodeToString(hash.Sum(nil)); hashString != c[1] {
+			return fmt.Errorf("download failed checksum verification, hash: %s", hashString)
+		}
+	}
+
+	if _, err := a.source.Seek(0, 0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *VolumeAction) Create() error {
+	def := &libvirtxml.StorageVolume{
+		Name:     a.name,
+		Capacity: a.size,
+		Target:   &libvirtxml.StorageVolumeTarget{Format: a.format},
+	}
+
+	if a.backingStore != nil {
+		def.BackingStore = a.backingStore
+	}
+
+	xml, err := def.Marshal()
+	if err != nil {
+		return err
+	}
+
+	v, err := a.StorageVolCreateXML(a.pool, xml, 0)
+	if err != nil {
+		return err
+	}
+
+	if a.source != nil {
+		return a.StorageVolUpload(v, a.source, 0, 0, libvirt.StorageVolUploadSparseStream)
+	}
+
+	return nil
+}
+
+func (a *VolumeAction) Update() error {
+	if a.id == nil {
+		return errors.New("can not update non-existing volume")
+	}
+
+	if a.size == nil {
+		return nil
+	}
+
+	s := utils.ConvertToBytes(a.state.Capacity.Value, a.state.Capacity.Unit)
+	r := utils.ConvertToBytes(a.size.Value, a.size.Unit)
+
+	if r > s {
+		return a.StorageVolResize(*a.id, r, 0)
+	}
+
+	return nil
+}
+
+func (a *VolumeAction) Delete() error {
+	if a.id == nil {
+		return nil
+	}
+	return a.StorageVolDelete(*a.id, libvirt.StorageVolDeleteNormal)
 }

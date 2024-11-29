@@ -23,10 +23,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
-	volumeaction "github.com/karelvanhecke/libvirt-operator/internal/action/volume"
 	"github.com/karelvanhecke/libvirt-operator/internal/controller"
-	authstore "github.com/karelvanhecke/libvirt-operator/internal/store/auth"
-	hoststore "github.com/karelvanhecke/libvirt-operator/internal/store/host"
+	"github.com/karelvanhecke/libvirt-operator/internal/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -159,8 +157,8 @@ func runOperator() {
 		os.Exit(1)
 	}
 
-	authStore := authstore.NewStore()
-	hostStore := hoststore.NewStore()
+	authStore := store.NewAuthStore()
+	hostStore := store.NewHostStore()
 
 	if err := (&controller.AuthReconciler{
 		Client:    mgr.GetClient(),
@@ -182,7 +180,6 @@ func runOperator() {
 	if err := (&controller.VolumeReconciler{
 		Client:    mgr.GetClient(),
 		HostStore: hostStore,
-		Action:    volumeaction.NewAction,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "failed to setup volume controller with manager")
 		os.Exit(1)
