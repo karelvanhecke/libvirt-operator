@@ -9,7 +9,7 @@ env:
   # renovate: datasource=golang-version depName=go
   GO_VERSION: '1.23.3'
   # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-  GOLANG_CI_VERSION: 'v1.62.0'
+  GOLANG_CI_VERSION: 'v1.62.2'
   # renovate: datasource=github-releases depName=docker/buildx versioning=semver
   BUILDX_VERSION: 'v0.18.0'
 
