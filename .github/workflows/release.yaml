@@ -15,7 +15,7 @@ env:
   # renovate: datasource=github-releases depName=sigstore/cosign versioning=semver
   COSIGN_VERSION: 'v2.4.1'
   # renovate: datasource=github-releases depName=docker/buildx versioning=semver
-  BUILDX_VERSION: 'v0.18.0'
+  BUILDX_VERSION: 'v0.19.1'
 
 jobs:
   release:
