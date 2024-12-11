@@ -37,8 +37,8 @@ import (
 
 type HostReconciler struct {
 	client.Client
-	AuthStore store.AuthStore
-	HostStore store.HostStore
+	AuthStore *store.AuthStore
+	HostStore *store.HostStore
 }
 
 func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -134,7 +134,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, fmt.Errorf("unsupported auth type: %s", auth.Spec.Type)
 	}
 
-	r.HostStore.Register(ctx, host.UID, r.HostStore.Entry(combinedVersion, dialer))
+	r.HostStore.Register(ctx, host.UID, combinedVersion, dialer)
 
 	if host.Labels == nil {
 		host.Labels = make(map[string]string)

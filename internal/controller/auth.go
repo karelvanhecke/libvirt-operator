@@ -35,7 +35,7 @@ import (
 
 type AuthReconciler struct {
 	client.Client
-	AuthStore store.AuthStore
+	AuthStore *store.AuthStore
 }
 
 func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -92,16 +92,16 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	files := []store.AuthFile{}
+	files := []*store.File{}
 	switch auth.Spec.Type {
 	case v1alpha1.SSHAuth:
 		if secret.Type != corev1.SecretTypeSSHAuth {
 			return ctrl.Result{}, fmt.Errorf("ssh auth requires a secret of type: %s", corev1.SecretTypeSSHAuth)
 		}
-		files = append(files, r.AuthStore.File(PrivateKey, secret.Data["ssh-privatekey"]))
+		files = append(files, store.NewFile(PrivateKey, secret.Data["ssh-privatekey"]))
 
 		if auth.Spec.Verify == nil || *auth.Spec.Verify {
-			files = append(files, r.AuthStore.File(KnownHosts, []byte(*auth.Spec.KnownHosts)))
+			files = append(files, store.NewFile(KnownHosts, []byte(*auth.Spec.KnownHosts)))
 		}
 	case v1alpha1.TLSAuth:
 		if secret.Type != corev1.SecretTypeTLS {
@@ -109,17 +109,17 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		files = append(files,
-			r.AuthStore.File(ClientCert, secret.Data["tls.crt"]),
-			r.AuthStore.File(ClientKey, secret.Data["tls.key"]))
+			store.NewFile(ClientCert, secret.Data["tls.crt"]),
+			store.NewFile(ClientKey, secret.Data["tls.key"]))
 
 		if auth.Spec.Verify == nil || *auth.Spec.Verify {
-			files = append(files, r.AuthStore.File(CaCert, []byte(*auth.Spec.Ca)))
+			files = append(files, store.NewFile(CaCert, []byte(*auth.Spec.Ca)))
 		}
 	default:
 		return ctrl.Result{}, fmt.Errorf("unsupported auth type: %s", auth.Spec.Type)
 	}
 
-	if err := r.AuthStore.Register(ctx, auth.UID, r.AuthStore.Entry(combinedVersion), files); err != nil {
+	if err := r.AuthStore.Register(ctx, auth.UID, combinedVersion, files); err != nil {
 		return ctrl.Result{}, err
 	}
 

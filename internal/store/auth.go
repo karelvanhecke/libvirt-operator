@@ -18,25 +18,134 @@ package store
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-type AuthFile interface {
-	Name() string
-	Data() []byte
+type File struct {
+	name string
+	data []byte
 }
 
-type AuthEntry interface {
-	SetPath(string)
-	GetPath() string
-	Version() string
+type AuthEntry struct {
+	path    string
+	version string
 }
 
-type AuthStore interface {
-	Entry(version string) AuthEntry
-	File(name string, data []byte) AuthFile
-	Register(ctx context.Context, uid types.UID, entry AuthEntry, files []AuthFile) error
-	Deregister(ctx context.Context, uid types.UID)
-	Lookup(uid types.UID) (auth AuthEntry, found bool)
+type AuthStore struct {
+	mu      sync.Mutex
+	entries map[types.UID]*AuthEntry
+}
+
+func NewAuthStore() *AuthStore {
+	return &AuthStore{entries: make(map[types.UID]*AuthEntry)}
+}
+
+func NewFile(name string, data []byte) *File {
+	return &File{
+		name: name,
+		data: data,
+	}
+}
+
+func (s *AuthStore) Register(ctx context.Context, uid types.UID, version string, files []*File) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, found := s.entries[uid]
+
+	dir, err := os.MkdirTemp("", string(uid)+".")
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		path := filepath.Join(dir, file.Name())
+		f, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(file.Data()); err != nil {
+			return err
+		}
+		if err := f.Close(); err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "could not close file", "file", path)
+		}
+	}
+
+	if !found {
+		entry = &AuthEntry{
+			version: version,
+		}
+		entry.SetPath(filepath.Join(os.TempDir(), string(uid)))
+		if err := os.Symlink(dir, entry.GetPath()); err != nil {
+			return err
+		}
+	} else {
+		path := entry.GetPath()
+		tmpPath := path + ".tmp"
+
+		oldDir, err := filepath.EvalSymlinks(path)
+
+		if err != nil {
+			return err
+		}
+		if err := os.Symlink(dir, tmpPath); err != nil {
+			return err
+		}
+		if err := os.Rename(tmpPath, path); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(oldDir); err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "failed to cleanup old auth dir", "auth", uid)
+		}
+	}
+
+	s.entries[uid] = entry
+	return nil
+}
+
+func (s *AuthStore) Deregister(ctx context.Context, uid types.UID) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, found := s.entries[uid]
+	if found {
+		delete(s.entries, uid)
+		if err := os.RemoveAll(entry.GetPath()); err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "failed to cleanup auth dir", "auth", uid)
+		}
+	}
+}
+
+func (s *AuthStore) Lookup(uid types.UID) (auth *AuthEntry, found bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	auth, found = s.entries[uid]
+	return
+}
+
+func (e *AuthEntry) SetPath(path string) {
+	e.path = path
+}
+
+func (e *AuthEntry) GetPath() string {
+	return e.path
+}
+
+func (e *AuthEntry) Version() string {
+	return e.version
+}
+
+func (f *File) Name() string {
+	return f.name
+}
+
+func (f *File) Data() []byte {
+	return f.data
 }
