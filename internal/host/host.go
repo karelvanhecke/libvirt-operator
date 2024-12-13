@@ -20,10 +20,11 @@ import (
 	"io"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/digitalocean/go-libvirt/socket"
 )
 
 var (
-	New = libvirt.NewWithDialer
+	New = func(dialer socket.Dialer) Client { return libvirt.NewWithDialer(dialer) }
 )
 
 type Client interface {
