@@ -28,6 +28,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+var (
+	WaitForSessionRetry = 1 * time.Minute
+)
+
 type HostEntry struct {
 	version  string
 	client   host.Client
@@ -123,7 +127,7 @@ func (e *HostEntry) endMon(ctx context.Context, uid types.UID) {
 	for {
 		if e.client != nil && e.client.IsConnected() {
 			if len(e.sessions) > 0 {
-				time.Sleep(1 * time.Minute)
+				time.Sleep(WaitForSessionRetry)
 				continue
 			}
 			if err := e.client.Disconnect(); err != nil {
