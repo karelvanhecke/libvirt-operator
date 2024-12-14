@@ -20,6 +20,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/digitalocean/go-libvirt"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -36,7 +37,10 @@ type Pool struct {
 func (p *Pool) getVolumeByName(name string) (*libvirtxml.StorageVolume, error) {
 	i := slices.IndexFunc(p.volumes, func(volume *libvirtxml.StorageVolume) bool { return volume.Name == name })
 	if i == -1 {
-		return nil, errors.New(ErrVolumeNotExist)
+		return nil, libvirt.Error{
+			Code:    uint32(libvirt.ErrNoStorageVol),
+			Message: ErrVolumeNotExist,
+		}
 	}
 
 	return p.volumes[i], nil
