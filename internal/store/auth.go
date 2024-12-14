@@ -26,6 +26,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+var (
+	TmpDir = os.TempDir()
+)
+
 type File struct {
 	name string
 	data []byte
@@ -56,20 +60,20 @@ func (s *AuthStore) Register(ctx context.Context, uid types.UID, version string,
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, found := s.entries[uid]
+	oldEntry, found := s.entries[uid]
 
-	dir, err := os.MkdirTemp("", string(uid)+".")
+	dir, err := os.MkdirTemp(TmpDir, string(uid)+".")
 	if err != nil {
 		return err
 	}
 
 	for _, file := range files {
-		path := filepath.Join(dir, file.Name())
+		path := filepath.Join(dir, file.name)
 		f, err := os.Create(path)
 		if err != nil {
 			return err
 		}
-		if _, err := f.Write(file.Data()); err != nil {
+		if _, err := f.Write(file.data); err != nil {
 			return err
 		}
 		if err := f.Close(); err != nil {
@@ -77,23 +81,25 @@ func (s *AuthStore) Register(ctx context.Context, uid types.UID, version string,
 		}
 	}
 
+	entry := &AuthEntry{
+		version: version,
+	}
+
 	if !found {
-		entry = &AuthEntry{
-			version: version,
-		}
-		entry.SetPath(filepath.Join(os.TempDir(), string(uid)))
+		entry.path = filepath.Join(TmpDir, string(uid))
 		if err := os.Symlink(dir, entry.GetPath()); err != nil {
 			return err
 		}
 	} else {
+		entry.path = oldEntry.GetPath()
 		path := entry.GetPath()
 		tmpPath := path + ".tmp"
 
 		oldDir, err := filepath.EvalSymlinks(path)
-
 		if err != nil {
 			return err
 		}
+
 		if err := os.Symlink(dir, tmpPath); err != nil {
 			return err
 		}
@@ -114,9 +120,17 @@ func (s *AuthStore) Deregister(ctx context.Context, uid types.UID) {
 	defer s.mu.Unlock()
 
 	entry, found := s.entries[uid]
+	link := entry.GetPath()
+	target, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to resolve link", "auth", uid)
+	}
 	if found {
 		delete(s.entries, uid)
-		if err := os.RemoveAll(entry.GetPath()); err != nil {
+		if err := os.Remove(link); err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "failed to cleanup auth link", "auth", uid)
+		}
+		if err := os.RemoveAll(target); err != nil {
 			ctrl.LoggerFrom(ctx).Error(err, "failed to cleanup auth dir", "auth", uid)
 		}
 	}
@@ -130,22 +144,10 @@ func (s *AuthStore) Lookup(uid types.UID) (auth *AuthEntry, found bool) {
 	return
 }
 
-func (e *AuthEntry) SetPath(path string) {
-	e.path = path
-}
-
 func (e *AuthEntry) GetPath() string {
 	return e.path
 }
 
 func (e *AuthEntry) Version() string {
 	return e.version
-}
-
-func (f *File) Name() string {
-	return f.name
-}
-
-func (f *File) Data() []byte {
-	return f.data
 }
