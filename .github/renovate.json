@@ -78,7 +78,7 @@
         }
     ],
     "timezone": "Europe/Brussels",
-    "automergeSchedule": [
+    "schedule": [
         "* 0-7 * * *"
     ]
 }
