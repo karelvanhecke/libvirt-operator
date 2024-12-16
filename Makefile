@@ -1,6 +1,6 @@
 OPERATOR_VERSION?=dev
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION=v0.25.0
+KIND_VERSION=v0.26.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
 CONTROLLER_GEN_VERSION=v0.16.5
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
