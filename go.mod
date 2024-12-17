@@ -3,7 +3,7 @@ module github.com/karelvanhecke/libvirt-operator
 go 1.23.0
 
 require (
-	github.com/digitalocean/go-libvirt v0.0.0-20241211175713-901e01e93a9a
+	github.com/digitalocean/go-libvirt v0.0.0-20241216201552-9fbdb61a21af
 	github.com/go-logr/logr v1.4.2
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
@@ -59,7 +59,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.30.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
