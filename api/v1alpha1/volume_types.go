@@ -88,7 +88,7 @@ type Volume struct {
 // +kubebuilder:object:root=true
 type VolumeList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metdata,omitempty"`
+	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Volume `json:"items"`
 }
