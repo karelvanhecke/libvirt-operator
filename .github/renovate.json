@@ -80,5 +80,6 @@
     "timezone": "Europe/Brussels",
     "schedule": [
         "* 0-7 * * *"
-    ]
+    ],
+    "osvVulnerabilityAlerts": true
 }
