@@ -16,6 +16,7 @@ jobs:
 
       - name: Run config validator
         env:
+          # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate versioning=semver
           RENOVATE_VERSION: 39.69.2@sha256:d7764febcd33a57bab29208cad437b03963227599096374aeb1cfffdf40ffd33
         run: >
           docker run --rm -v ./.github/renovate.json:/renovate.json

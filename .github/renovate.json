@@ -12,18 +12,9 @@
     "customManagers":[
         {
             "customType": "regex",
-            "fileMatch": "^\\.github/workflows/renovate(?:-config)?\\.yaml$",
-            "depNameTemplate": "ghcr.io/renovatebot/renovate",
-            "datasourceTemplate": "docker",
-            "matchStrings": [
-                "(?:renovate|RENOVATE)[_-](?:version|VERSION): (?<currentValue>[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
-            ]
-        },
-        {
-            "customType": "regex",
             "fileMatch": "^(?:Makefile|.github/workflows/.+\\.yaml)$",
             "matchStrings": [
-                "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s+.+_VERSION(?:=|: )'?(?<currentValue>v?[0-9.]+)'?"
+                "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?: versioning=(?<versioning>[a-z-]+?))?\\s+.+(?:_VERSION|-version)(?:=|: )'?(?<currentValue>v?[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?'?"
             ]
         }
     ],
