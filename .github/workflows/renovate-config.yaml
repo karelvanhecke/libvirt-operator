@@ -1,0 +1,23 @@
+---
+name: Renovate config
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate Renovate config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run config validator
+        env:
+          RENOVATE_VERSION: 39.69.2@sha256:d7764febcd33a57bab29208cad437b03963227599096374aeb1cfffdf40ffd33
+        run: >
+          docker run --rm -v ./.github/renovate.json:/renovate.json
+          --entrypoint renovate-config-validator
+          ghcr.io/renovatebot/renovate:${RENOVATE_VERSION} /renovate.json

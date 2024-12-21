@@ -1,5 +1,5 @@
 ---
-name: Release please
+name: Release Please
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 jobs:
   release-please:
+    name: Release Please
     runs-on: ubuntu-latest
     steps:
       - name: Get app token
@@ -17,7 +18,7 @@ jobs:
           app-id: ${{ vars.RELEASE_PLEASE_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_KEY }}
 
-      - name: Run release-please
+      - name: Run Release Please
         uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
         with:
           token: ${{ steps.app-token.outputs.token }}

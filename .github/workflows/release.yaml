@@ -5,30 +5,36 @@ on:
   push:
     tags:
       - v*
+    branches:
+      - main
+    paths:
+      - go.mod
+      - go.sum
+      - '**/*.go'
 
 permissions:
   packages: write
   id-token: write
-  contents: read
 
 env:
   # renovate: datasource=github-releases depName=sigstore/cosign versioning=semver
   COSIGN_VERSION: 'v2.4.1'
-  # renovate: datasource=github-releases depName=docker/buildx versioning=semver
-  BUILDX_VERSION: 'v0.19.3'
 
 jobs:
   release:
+    name: Release container image
+    permissions:
+      packages: write
+    uses: ./.github/workflows/container-image.yaml
+    with:
+      push: true
+      platforms: linux/amd64,linux/arm64
+
+  sign:
+    name: Sign container image
+    needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Setup qemu
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-
-      - name: Setup buildx
-        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
-        with:
-          version: ${{ env.BUILDX_VERSION }}
-
       - name: Setup cosign
         uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
         with:
@@ -41,22 +47,5 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Container metadata
-        id: meta
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-        with:
-          images: |
-            ghcr.io/karelvanhecke/libvirt-operator
-
-      - name: Build and push container
-        id: build
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-        with:
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: OPERATOR_VERSION=${{ github.ref_name }}
-
-      - name: Sign container
-        run: cosign sign --yes ghcr.io/karelvanhecke/libvirt-operator@${{ steps.build.outputs.digest }}
+      - name: Sign with cosign
+        run: cosign sign --yes ghcr.io/karelvanhecke/libvirt-operator@${{ needs.release.outputs.digest }}
