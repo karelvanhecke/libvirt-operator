@@ -5,6 +5,8 @@ KIND_VERSION=v0.25.0
 CONTROLLER_GEN_VERSION=v0.16.5
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
 KUBECTL_VERSION=v1.31.4
+# renovate: datasource=docker depName=docker.io/kindest/node versioning=semver
+KIND_IMAGE_VERSION=v1.31.2@sha256:18fbefc20a7113353c7b75b5c869d7145a6abd6269154825872dc59c1329912e
 HEADERFILE=./hack/boilerplate.go.txt
 ROLENAME=libvirt-operator
 
@@ -51,7 +53,7 @@ build-container:
 	@docker build --build-arg OPERATOR_VERSION=$(OPERATOR_VERSION) -t ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) .
 
 create-kind-cluster:
-	@kind create cluster --name operator-dev
+	@kind create cluster --name operator-dev --image docker.io/kindest/node:${KIND_IMAGE_VERSION}
 
 deploy-to-kind-cluster:
 	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) && \
