@@ -75,18 +75,6 @@
                 "* 4-6 * * 1"
             ],
             "separateMinorPatch": false
-        },
-        {
-            "groupName": "codeql",
-            "matchDepNames": [
-                "github/codeql-action/*"
-            ]
-        },
-        {
-            "groupName": "osv",
-            "matchDepNames": [
-                "google/osv-scanner-action/*"
-            ]
         }
     ],
     "timezone": "Europe/Brussels",
