@@ -33,7 +33,7 @@
             "matchDepNames":[
                 "kubernetes/*",
                 "kubernetes-sigs/*",
-                "kind-image"
+                "kindest/node"
             ],
             "automerge": false
         },
