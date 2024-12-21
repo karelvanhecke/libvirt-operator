@@ -12,7 +12,7 @@
     "customManagers":[
         {
             "customType": "regex",
-            "fileMatch": "^\\.github/workflows/(?:ci|renovate)\\.yaml$",
+            "fileMatch": "^\\.github/workflows/renovate(?:-config)?\\.yaml$",
             "depNameTemplate": "ghcr.io/renovatebot/renovate",
             "datasourceTemplate": "docker",
             "matchStrings": [
@@ -75,6 +75,18 @@
                 "* 4-6 * * 1"
             ],
             "separateMinorPatch": false
+        },
+        {
+            "groupName": "codeql",
+            "matchDepNames": [
+                "github/codeql-action/*"
+            ]
+        },
+        {
+            "groupName": "osv",
+            "matchDepNames": [
+                "google/osv-scanner-action/*"
+            ]
         }
     ],
     "timezone": "Europe/Brussels",

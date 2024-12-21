@@ -8,6 +8,7 @@ on:
 
 jobs:
   renovate:
+    name: Renovate
     runs-on: ubuntu-latest
     steps:
       - name: Get app token
