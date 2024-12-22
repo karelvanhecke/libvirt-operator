@@ -23,8 +23,8 @@ jobs:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@764c91816374ff2d8fc2095dab36eecd42d61638 # v1.9.2
     with:
       scan-args: |-
-        --skip-git=true # Skip commit scanning to focus on dependencies
-        ./ # Start the scan from the root of the repository
+        --skip-git=true
+        ./
 
   scan-pr:
     name: Scan PR
@@ -32,5 +32,5 @@ jobs:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@764c91816374ff2d8fc2095dab36eecd42d61638 # v1.9.2
     with:
       scan-args: |-
-        --skip-git=true # Skip commit scanning to focus on dependencies
-        ./ # Start the scan from the root of the repository
+        --skip-git=true
+        ./
