@@ -6,7 +6,7 @@ CONTROLLER_GEN_VERSION=v0.16.5
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
 KUBECTL_VERSION=v1.31.4
 # renovate: datasource=docker depName=kindest/node versioning=semver
-KIND_IMAGE_VERSION=v1.31.4@sha256:2cb39f7295fe7eafee0842b1052a599a4fb0f8bcf3f83d96c7f4864c357c6c30
+KIND_IMAGE_VERSION=v1.32.0@sha256:c48c62eac5da28cdadcf560d1d8616cfa6783b58f0d94cf63ad1bf49600cb027
 HEADERFILE=./hack/boilerplate.go.txt
 ROLENAME=libvirt-operator
 
