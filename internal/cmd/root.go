@@ -26,7 +26,6 @@ import (
 	"github.com/karelvanhecke/libvirt-operator/internal/controller"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
@@ -119,7 +118,6 @@ func runOperator() {
 		os.Exit(1)
 	}
 
-	namespace := viper.GetString("namespace")
 	if namespace == "" {
 		ns, err := os.ReadFile(defaultNamespacePath)
 		if err != nil {
