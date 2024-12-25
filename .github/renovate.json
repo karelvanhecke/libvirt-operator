@@ -67,6 +67,12 @@
                 "* 4-6 * * 1"
             ],
             "separateMinorPatch": false
+        },
+        {
+            "matchDepNames": "ghcr.io/karelvanhecke/libvirt-operator",
+            "matchFileNames": ["install/main/kustomization.yaml"],
+            "automerge": true,
+            "schedule": null
         }
     ],
     "timezone": "Europe/Brussels",
