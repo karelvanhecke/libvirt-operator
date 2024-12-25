@@ -4,7 +4,7 @@ kind: Kustomization
 
 images:
   - name: ghcr.io/karelvanhecke/libvirt-operator
-    newTag: ${OPERATOR_VERSION}
+    newTag: ${VERSION}
 
 resources:
   - ../base
