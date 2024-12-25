@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.23.4-bookworm@sha256:ef30001eeadd12890c7737c26f3be5b3a8479ccdcdc553b999c84879875a27ce AS build
+FROM docker.io/golang:1.23.4-bookworm@sha256:6546e4d3271d1ba19159f10b77c04afa524afd0d1acc52cdae51e8a9e0399149 AS build
 ARG OPERATOR_VERSION
 WORKDIR /usr/src/github.com/karelvanhecke/libvirt-operator
 
