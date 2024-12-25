@@ -1,4 +1,7 @@
-OPERATOR_VERSION?=dev
+VERSION?=dev
+COMMIT?=$(shell git rev-parse HEAD)
+BUILD_DATE?=$(shell date --iso-8601=s)
+
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION=v0.26.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
@@ -53,14 +56,19 @@ test:
 .PHONY: build-binary
 build-binary:
 	@CGO_ENABLED=0 go build -o bin/operator \
-		-ldflags "-s -w -X 'github.com/karelvanhecke/libvirt-operator/internal/version.version=$(OPERATOR_VERSION)' \
-		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.buildDate=$(shell date --iso-8601=s)' \
-		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.buildCommit=$(shell git rev-parse HEAD)'" \
+		-ldflags "-s -w -X 'github.com/karelvanhecke/libvirt-operator/internal/version.version=$(VERSION)' \
+		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.commit=$(COMMIT)' \
+		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.buildDate=$(BUILD_DATE)'" \
 		github.com/karelvanhecke/libvirt-operator/cmd/operator
 
 .PHONY: build-container
 build-container:
-	@docker build --build-arg OPERATOR_VERSION=$(OPERATOR_VERSION) -t ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) .
+	@docker buildx build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		--load \
+		-t ghcr.io/karelvanhecke/libvirt-operator:$(VERSION) .
 
 .PHONY: create-kind-cluster
 create-kind-cluster:
@@ -68,9 +76,9 @@ create-kind-cluster:
 
 .PHONY: deploy-to-kind-cluster
 deploy-to-kind-cluster:
-	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(OPERATOR_VERSION) && \
+	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(VERSION) && \
 		mkdir -p ./install/development && \
-		OPERATOR_VERSION=$(OPERATOR_VERSION) envsubst < ./hack/kustomization.yaml.txt > ./install/development/kustomization.yaml && \
+		VERSION=$(VERSION) envsubst < ./hack/kustomization.yaml.txt > ./install/development/kustomization.yaml && \
 		kubectl apply --context kind-operator-dev -k ./install/development && \
 		kubectl -n libvirt-operator wait --for=condition=Available=true deployment/libvirt-operator
 

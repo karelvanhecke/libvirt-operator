@@ -21,14 +21,17 @@ import (
 	"runtime"
 )
 
-const platform = runtime.GOOS + "/" + runtime.GOARCH
-
 var (
-	version     = "dev"
-	buildDate   = "N/A"
-	buildCommit = "N/A"
+	version   = "dev"
+	commit    = "N/A"
+	buildDate = "N/A"
 )
 
 func Info() {
-	fmt.Printf("version: %s\nbuild date: %s\nbuild commit: %s\nplatform: %s\n", version, buildDate, buildCommit, platform)
+	fmt.Printf("version: %s\ncommit: %s\nbuild date: %s\ngo version: %s\nplatform: %s\n",
+		version,
+		commit,
+		buildDate,
+		runtime.Version(),
+		runtime.GOOS+"/"+runtime.GOARCH)
 }
