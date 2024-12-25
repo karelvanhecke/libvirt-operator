@@ -42,12 +42,6 @@ type VolumeSource struct {
 	Checksum *string `json:"checksum,omitempty"`
 }
 
-type BackingStoreRef struct {
-	// +kubebuilder:validation:Pattern="^[a-z0-9][a-z0-9\\-.]{0,251}[a-z0-9]|[a-z0-9]$"
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
-}
-
 // +kubebuilder:validation:XValidation:rule="has(self.size) ? true : has(self.source) || has(self.backingStoreRef)",message="size can only be omitted when a backing store is defined"
 // +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
 type VolumeSpec struct {
