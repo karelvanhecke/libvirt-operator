@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.23.4-bookworm@sha256:6546e4d3271d1ba19159f10b77c04afa524afd0d1acc52cdae51e8a9e0399149 AS build
+FROM docker.io/golang:1.23.4-bookworm@sha256:2e838582004fab0931693a3a84743ceccfbfeeafa8187e87291a1afea457ff7a AS build
 ARG VERSION
 ARG COMMIT
 ARG BUILD_DATE
