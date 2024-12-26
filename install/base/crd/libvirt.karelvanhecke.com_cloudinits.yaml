@@ -1,0 +1,1328 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: cloudinits.libvirt.karelvanhecke.com
+spec:
+  group: libvirt.karelvanhecke.com
+  names:
+    kind: CloudInit
+    listKind: CloudInitList
+    plural: cloudinits
+    singular: cloudinit
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              hostRef:
+                properties:
+                  name:
+                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                    type: string
+                required:
+                - name
+                type: object
+              metadata:
+                properties:
+                  instanceID:
+                    type: string
+                  localHostname:
+                    type: string
+                required:
+                - instanceID
+                - localHostname
+                type: object
+              networkConfig:
+                properties:
+                  bonds:
+                    additionalProperties:
+                      properties:
+                        acceptRA:
+                          type: boolean
+                        addresses:
+                          items:
+                            type: string
+                          type: array
+                        dhcp4:
+                          type: boolean
+                        dhcp4Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        dhcp6:
+                          type: boolean
+                        dhcp6Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        interfaces:
+                          items:
+                            type: string
+                          type: array
+                        mtu:
+                          format: int32
+                          type: integer
+                        nameservers:
+                          properties:
+                            addresses:
+                              items:
+                                type: string
+                              type: array
+                            search:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        optional:
+                          type: boolean
+                        parameters:
+                          properties:
+                            adSelect:
+                              type: string
+                            allSlavesActive:
+                              type: boolean
+                            arpAllTargets:
+                              type: string
+                            arpIPTargets:
+                              items:
+                                type: string
+                              type: array
+                            arpInterval:
+                              format: int32
+                              type: integer
+                            arpValidate:
+                              type: string
+                            downDelay:
+                              format: int32
+                              type: integer
+                            failOverMacPolicy:
+                              type: string
+                            gratuitousArp:
+                              format: int32
+                              type: integer
+                            lacpRate:
+                              type: string
+                            learnPacketInterval:
+                              format: int32
+                              type: integer
+                            miiMonitorInterval:
+                              format: int32
+                              type: integer
+                            minLinks:
+                              format: int32
+                              type: integer
+                            mode:
+                              type: string
+                            packetsPerSlave:
+                              format: int32
+                              type: integer
+                            primaryReselectPolicy:
+                              type: string
+                            transmitHashPolicy:
+                              type: string
+                            upDelay:
+                              format: int32
+                              type: integer
+                          type: object
+                        raOverrides:
+                          properties:
+                            table:
+                              format: int32
+                              type: integer
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: string
+                          type: object
+                        renderer:
+                          type: string
+                        routes:
+                          items:
+                            properties:
+                              metric:
+                                format: int32
+                                type: integer
+                              to:
+                                type: string
+                              via:
+                                type: string
+                            required:
+                            - to
+                            - via
+                            type: object
+                          type: array
+                      required:
+                      - interfaces
+                      type: object
+                    type: object
+                  bridges:
+                    additionalProperties:
+                      properties:
+                        acceptRA:
+                          type: boolean
+                        addresses:
+                          items:
+                            type: string
+                          type: array
+                        dhcp4:
+                          type: boolean
+                        dhcp4Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        dhcp6:
+                          type: boolean
+                        dhcp6Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        interfaces:
+                          items:
+                            type: string
+                          type: array
+                        mtu:
+                          format: int32
+                          type: integer
+                        nameservers:
+                          properties:
+                            addresses:
+                              items:
+                                type: string
+                              type: array
+                            search:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        optional:
+                          type: boolean
+                        parameters:
+                          properties:
+                            ageingTime:
+                              format: int32
+                              type: integer
+                            forwardDelay:
+                              format: int32
+                              type: integer
+                            helloTime:
+                              format: int32
+                              type: integer
+                            maxAge:
+                              format: int32
+                              type: integer
+                            pathCost:
+                              format: int32
+                              type: integer
+                            priority:
+                              format: int32
+                              type: integer
+                            stp:
+                              type: boolean
+                          type: object
+                        raOverrides:
+                          properties:
+                            table:
+                              format: int32
+                              type: integer
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: string
+                          type: object
+                        renderer:
+                          type: string
+                        routes:
+                          items:
+                            properties:
+                              metric:
+                                format: int32
+                                type: integer
+                              to:
+                                type: string
+                              via:
+                                type: string
+                            required:
+                            - to
+                            - via
+                            type: object
+                          type: array
+                      required:
+                      - interfaces
+                      type: object
+                    type: object
+                  ethernets:
+                    additionalProperties:
+                      properties:
+                        acceptRA:
+                          type: boolean
+                        addresses:
+                          items:
+                            type: string
+                          type: array
+                        dhcp4:
+                          type: boolean
+                        dhcp4Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        dhcp6:
+                          type: boolean
+                        dhcp6Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        match:
+                          properties:
+                            driver:
+                              type: string
+                            macAddress:
+                              type: string
+                            name:
+                              type: string
+                          type: object
+                        mtu:
+                          format: int32
+                          type: integer
+                        nameservers:
+                          properties:
+                            addresses:
+                              items:
+                                type: string
+                              type: array
+                            search:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        optional:
+                          type: boolean
+                        raOverrides:
+                          properties:
+                            table:
+                              format: int32
+                              type: integer
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: string
+                          type: object
+                        renderer:
+                          type: string
+                        routes:
+                          items:
+                            properties:
+                              metric:
+                                format: int32
+                                type: integer
+                              to:
+                                type: string
+                              via:
+                                type: string
+                            required:
+                            - to
+                            - via
+                            type: object
+                          type: array
+                        setName:
+                          type: string
+                        wakeOnLAN:
+                          type: boolean
+                      type: object
+                    type: object
+                  vlans:
+                    additionalProperties:
+                      properties:
+                        acceptRA:
+                          type: boolean
+                        addresses:
+                          items:
+                            type: string
+                          type: array
+                        dhcp4:
+                          type: boolean
+                        dhcp4Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        dhcp6:
+                          type: boolean
+                        dhcp6Overrides:
+                          properties:
+                            hostname:
+                              type: string
+                            routeMetric:
+                              format: int32
+                              type: integer
+                            sendHostname:
+                              type: boolean
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: boolean
+                            useMTU:
+                              type: boolean
+                            useNTP:
+                              type: boolean
+                            useRoutes:
+                              type: boolean
+                          type: object
+                        id:
+                          format: int32
+                          type: integer
+                        link:
+                          type: string
+                        mtu:
+                          format: int32
+                          type: integer
+                        nameservers:
+                          properties:
+                            addresses:
+                              items:
+                                type: string
+                              type: array
+                            search:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        optional:
+                          type: boolean
+                        raOverrides:
+                          properties:
+                            table:
+                              format: int32
+                              type: integer
+                            useDNS:
+                              type: boolean
+                            useDomains:
+                              type: string
+                          type: object
+                        renderer:
+                          type: string
+                        routes:
+                          items:
+                            properties:
+                              metric:
+                                format: int32
+                                type: integer
+                              to:
+                                type: string
+                              via:
+                                type: string
+                            required:
+                            - to
+                            - via
+                            type: object
+                          type: array
+                      required:
+                      - id
+                      - link
+                      type: object
+                    type: object
+                type: object
+              pool:
+                type: string
+              userData:
+                properties:
+                  bootcmd:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  caCerts:
+                    properties:
+                      removeDefaults:
+                        type: boolean
+                      trusted:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  createHostnameFile:
+                    type: boolean
+                  deviceAliases:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  diskSetup:
+                    additionalProperties:
+                      properties:
+                        layout:
+                          items:
+                            type: string
+                          type: array
+                        overwrite:
+                          type: boolean
+                        tableType:
+                          type: string
+                      type: object
+                    type: object
+                  fqdn:
+                    type: string
+                  fsSetup:
+                    items:
+                      properties:
+                        cmd:
+                          items:
+                            type: string
+                          type: array
+                        device:
+                          type: string
+                        extraOpts:
+                          items:
+                            type: string
+                          type: array
+                        filesystem:
+                          type: string
+                        label:
+                          type: string
+                        overwrite:
+                          type: boolean
+                        partition:
+                          type: string
+                        replaceFs:
+                          type: string
+                      required:
+                      - device
+                      - filesystem
+                      type: object
+                    type: array
+                  groups:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
+                    type: object
+                  growpart:
+                    properties:
+                      devices:
+                        items:
+                          type: string
+                        type: array
+                      ignoreGrowrootDisabled:
+                        type: boolean
+                      mode:
+                        type: string
+                    type: object
+                  hostname:
+                    type: string
+                  keyboard:
+                    properties:
+                      layout:
+                        type: string
+                      model:
+                        type: string
+                      options:
+                        type: string
+                      variant:
+                        type: string
+                    required:
+                    - layout
+                    type: object
+                  locale:
+                    type: string
+                  localeConfigFile:
+                    type: string
+                  mountDefaultFields:
+                    items:
+                      type: string
+                    type: array
+                  mounts:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  ntp:
+                    properties:
+                      allow:
+                        items:
+                          type: string
+                        type: array
+                      config:
+                        properties:
+                          checkExe:
+                            type: string
+                          confPath:
+                            type: string
+                          packages:
+                            items:
+                              type: string
+                            type: array
+                          serviceName:
+                            type: string
+                          template:
+                            type: string
+                        type: object
+                      enabled:
+                        type: boolean
+                      ntpClient:
+                        type: string
+                      peers:
+                        items:
+                          type: string
+                        type: array
+                      pools:
+                        items:
+                          type: string
+                        type: array
+                      servers:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  phoneHome:
+                    properties:
+                      post:
+                        items:
+                          type: string
+                        type: array
+                      tries:
+                        format: int32
+                        type: integer
+                      url:
+                        type: string
+                    required:
+                    - url
+                    type: object
+                  preferFqdnOverHostname:
+                    type: boolean
+                  preserveHostname:
+                    type: boolean
+                  runcmd:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  swap:
+                    properties:
+                      filename:
+                        type: string
+                      maxsize:
+                        type: string
+                      size:
+                        type: string
+                    type: object
+                  timezone:
+                    type: string
+                  user:
+                    properties:
+                      createGroups:
+                        type: boolean
+                      doas:
+                        items:
+                          type: string
+                        type: array
+                      expireDate:
+                        type: string
+                      gecos:
+                        type: string
+                      groups:
+                        type: string
+                      hashedPasswd:
+                        type: string
+                      homedir:
+                        type: string
+                      inactive:
+                        type: string
+                      lockPassword:
+                        type: boolean
+                      name:
+                        type: string
+                      noCreateHome:
+                        type: boolean
+                      noLogInit:
+                        type: boolean
+                      noUserGroup:
+                        type: boolean
+                      passwd:
+                        type: string
+                      plainTextPasswd:
+                        type: string
+                      primaryGroup:
+                        type: string
+                      selinuxUser:
+                        type: string
+                      shell:
+                        type: string
+                      snapuser:
+                        type: string
+                      sshAuthorizedKeys:
+                        items:
+                          type: string
+                        type: array
+                      sshImportID:
+                        items:
+                          type: string
+                        type: array
+                      sshRedirectUser:
+                        type: boolean
+                      sudo:
+                        items:
+                          type: string
+                        type: array
+                      system:
+                        type: boolean
+                      uid:
+                        format: int32
+                        type: integer
+                    required:
+                    - name
+                    type: object
+                  users:
+                    items:
+                      properties:
+                        createGroups:
+                          type: boolean
+                        doas:
+                          items:
+                            type: string
+                          type: array
+                        expireDate:
+                          type: string
+                        gecos:
+                          type: string
+                        groups:
+                          type: string
+                        hashedPasswd:
+                          type: string
+                        homedir:
+                          type: string
+                        inactive:
+                          type: string
+                        lockPassword:
+                          type: boolean
+                        name:
+                          type: string
+                        noCreateHome:
+                          type: boolean
+                        noLogInit:
+                          type: boolean
+                        noUserGroup:
+                          type: boolean
+                        passwd:
+                          type: string
+                        plainTextPasswd:
+                          type: string
+                        primaryGroup:
+                          type: string
+                        selinuxUser:
+                          type: string
+                        shell:
+                          type: string
+                        snapuser:
+                          type: string
+                        sshAuthorizedKeys:
+                          items:
+                            type: string
+                          type: array
+                        sshImportID:
+                          items:
+                            type: string
+                          type: array
+                        sshRedirectUser:
+                          type: boolean
+                        sudo:
+                          items:
+                            type: string
+                          type: array
+                        system:
+                          type: boolean
+                        uid:
+                          format: int32
+                          type: integer
+                      required:
+                      - name
+                      type: object
+                    type: array
+                  writeFiles:
+                    items:
+                      properties:
+                        append:
+                          type: boolean
+                        content:
+                          type: string
+                        defer:
+                          type: boolean
+                        encoding:
+                          type: string
+                        owner:
+                          type: string
+                        path:
+                          type: string
+                        permissions:
+                          type: string
+                        source:
+                          properties:
+                            headers:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            uri:
+                              type: string
+                          required:
+                          - uri
+                          type: object
+                      required:
+                      - path
+                      type: object
+                      x-kubernetes-validations:
+                      - message: either content or source needs to be set
+                        rule: 'has(self.content) ? !has(self.source) : has(self.source)'
+                    type: array
+                type: object
+              vendorData:
+                properties:
+                  bootcmd:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  caCerts:
+                    properties:
+                      removeDefaults:
+                        type: boolean
+                      trusted:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  createHostnameFile:
+                    type: boolean
+                  deviceAliases:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  diskSetup:
+                    additionalProperties:
+                      properties:
+                        layout:
+                          items:
+                            type: string
+                          type: array
+                        overwrite:
+                          type: boolean
+                        tableType:
+                          type: string
+                      type: object
+                    type: object
+                  fqdn:
+                    type: string
+                  fsSetup:
+                    items:
+                      properties:
+                        cmd:
+                          items:
+                            type: string
+                          type: array
+                        device:
+                          type: string
+                        extraOpts:
+                          items:
+                            type: string
+                          type: array
+                        filesystem:
+                          type: string
+                        label:
+                          type: string
+                        overwrite:
+                          type: boolean
+                        partition:
+                          type: string
+                        replaceFs:
+                          type: string
+                      required:
+                      - device
+                      - filesystem
+                      type: object
+                    type: array
+                  groups:
+                    additionalProperties:
+                      items:
+                        type: string
+                      type: array
+                    type: object
+                  growpart:
+                    properties:
+                      devices:
+                        items:
+                          type: string
+                        type: array
+                      ignoreGrowrootDisabled:
+                        type: boolean
+                      mode:
+                        type: string
+                    type: object
+                  hostname:
+                    type: string
+                  keyboard:
+                    properties:
+                      layout:
+                        type: string
+                      model:
+                        type: string
+                      options:
+                        type: string
+                      variant:
+                        type: string
+                    required:
+                    - layout
+                    type: object
+                  locale:
+                    type: string
+                  localeConfigFile:
+                    type: string
+                  mountDefaultFields:
+                    items:
+                      type: string
+                    type: array
+                  mounts:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  ntp:
+                    properties:
+                      allow:
+                        items:
+                          type: string
+                        type: array
+                      config:
+                        properties:
+                          checkExe:
+                            type: string
+                          confPath:
+                            type: string
+                          packages:
+                            items:
+                              type: string
+                            type: array
+                          serviceName:
+                            type: string
+                          template:
+                            type: string
+                        type: object
+                      enabled:
+                        type: boolean
+                      ntpClient:
+                        type: string
+                      peers:
+                        items:
+                          type: string
+                        type: array
+                      pools:
+                        items:
+                          type: string
+                        type: array
+                      servers:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  phoneHome:
+                    properties:
+                      post:
+                        items:
+                          type: string
+                        type: array
+                      tries:
+                        format: int32
+                        type: integer
+                      url:
+                        type: string
+                    required:
+                    - url
+                    type: object
+                  preferFqdnOverHostname:
+                    type: boolean
+                  preserveHostname:
+                    type: boolean
+                  runcmd:
+                    items:
+                      items:
+                        type: string
+                      type: array
+                    type: array
+                  swap:
+                    properties:
+                      filename:
+                        type: string
+                      maxsize:
+                        type: string
+                      size:
+                        type: string
+                    type: object
+                  timezone:
+                    type: string
+                  user:
+                    properties:
+                      createGroups:
+                        type: boolean
+                      doas:
+                        items:
+                          type: string
+                        type: array
+                      expireDate:
+                        type: string
+                      gecos:
+                        type: string
+                      groups:
+                        type: string
+                      hashedPasswd:
+                        type: string
+                      homedir:
+                        type: string
+                      inactive:
+                        type: string
+                      lockPassword:
+                        type: boolean
+                      name:
+                        type: string
+                      noCreateHome:
+                        type: boolean
+                      noLogInit:
+                        type: boolean
+                      noUserGroup:
+                        type: boolean
+                      passwd:
+                        type: string
+                      plainTextPasswd:
+                        type: string
+                      primaryGroup:
+                        type: string
+                      selinuxUser:
+                        type: string
+                      shell:
+                        type: string
+                      snapuser:
+                        type: string
+                      sshAuthorizedKeys:
+                        items:
+                          type: string
+                        type: array
+                      sshImportID:
+                        items:
+                          type: string
+                        type: array
+                      sshRedirectUser:
+                        type: boolean
+                      sudo:
+                        items:
+                          type: string
+                        type: array
+                      system:
+                        type: boolean
+                      uid:
+                        format: int32
+                        type: integer
+                    required:
+                    - name
+                    type: object
+                  users:
+                    items:
+                      properties:
+                        createGroups:
+                          type: boolean
+                        doas:
+                          items:
+                            type: string
+                          type: array
+                        expireDate:
+                          type: string
+                        gecos:
+                          type: string
+                        groups:
+                          type: string
+                        hashedPasswd:
+                          type: string
+                        homedir:
+                          type: string
+                        inactive:
+                          type: string
+                        lockPassword:
+                          type: boolean
+                        name:
+                          type: string
+                        noCreateHome:
+                          type: boolean
+                        noLogInit:
+                          type: boolean
+                        noUserGroup:
+                          type: boolean
+                        passwd:
+                          type: string
+                        plainTextPasswd:
+                          type: string
+                        primaryGroup:
+                          type: string
+                        selinuxUser:
+                          type: string
+                        shell:
+                          type: string
+                        snapuser:
+                          type: string
+                        sshAuthorizedKeys:
+                          items:
+                            type: string
+                          type: array
+                        sshImportID:
+                          items:
+                            type: string
+                          type: array
+                        sshRedirectUser:
+                          type: boolean
+                        sudo:
+                          items:
+                            type: string
+                          type: array
+                        system:
+                          type: boolean
+                        uid:
+                          format: int32
+                          type: integer
+                      required:
+                      - name
+                      type: object
+                    type: array
+                  writeFiles:
+                    items:
+                      properties:
+                        append:
+                          type: boolean
+                        content:
+                          type: string
+                        defer:
+                          type: boolean
+                        encoding:
+                          type: string
+                        owner:
+                          type: string
+                        path:
+                          type: string
+                        permissions:
+                          type: string
+                        source:
+                          properties:
+                            headers:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            uri:
+                              type: string
+                          required:
+                          - uri
+                          type: object
+                      required:
+                      - path
+                      type: object
+                      x-kubernetes-validations:
+                      - message: either content or source needs to be set
+                        rule: 'has(self.content) ? !has(self.source) : has(self.source)'
+                    type: array
+                type: object
+            required:
+            - hostRef
+            type: object
+          status:
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

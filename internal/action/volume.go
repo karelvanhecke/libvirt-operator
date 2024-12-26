@@ -115,7 +115,11 @@ func (a *VolumeAction) WithBackingStore(name string) error {
 	return nil
 }
 
-func (a *VolumeAction) WithSource(url string, checksum *string) error {
+func (a *VolumeAction) WithLocalSource(file *os.File) {
+	a.source = file
+}
+
+func (a *VolumeAction) WithRemoteSource(url string, checksum *string) error {
 	// #nosec G107
 	resp, err := http.Get(url)
 	if err != nil {

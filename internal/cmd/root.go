@@ -72,6 +72,9 @@ func NewOperatorCmd() *cobra.Command {
 	return cmd
 }
 
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes/finalizers,verbs=update
@@ -176,6 +179,14 @@ func runOperator() {
 	}
 
 	if err := (&controller.VolumeReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup volume controller with manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.CloudInitReconciler{
 		Client:    mgr.GetClient(),
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {

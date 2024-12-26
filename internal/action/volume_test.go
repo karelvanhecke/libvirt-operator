@@ -178,7 +178,7 @@ func TestVolumeCreateWithSource(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err := a.WithSource(server.URL, &checksum); err != nil {
+	if err := a.WithRemoteSource(server.URL, &checksum); err != nil {
 		t.Fail()
 	}
 
