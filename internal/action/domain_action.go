@@ -14,19 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package action
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/digitalocean/go-libvirt"
+	"github.com/karelvanhecke/libvirt-operator/internal/host"
+	"libvirt.org/go/libvirtxml"
 )
 
-type ResourceRef struct {
-	// +kubebuilder:validation:Pattern="^[a-z0-9][a-z0-9\\-.]{0,251}[a-z0-9]|[a-z0-9]$"
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
+type DomainAction struct {
+	host.Client
+	name  string
+	id    *libvirt.Domain
+	state *libvirtxml.Domain
 }
 
-// +kubebuilder:validation:Optional
-type Status struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+func NewDomainAction(client host.Client, name string) (*DomainAction, error) {
+	return &DomainAction{
+		Client: client,
+		name:   name,
+	}, nil
 }

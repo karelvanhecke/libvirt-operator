@@ -47,6 +47,46 @@ spec:
                 required:
                 - name
                 type: object
+              networks:
+                items:
+                  properties:
+                    default:
+                      type: boolean
+                    name:
+                      type: string
+                    type:
+                      enum:
+                      - network
+                      - bridge
+                      - direct
+                      type: string
+                  required:
+                  - name
+                  - type
+                  type: object
+                minItems: 1
+                type: array
+              pciPassthrough:
+                items:
+                  properties:
+                    bus:
+                      type: string
+                    domain:
+                      type: string
+                    function:
+                      type: string
+                    name:
+                      type: string
+                    slot:
+                      type: string
+                  required:
+                  - bus
+                  - domain
+                  - function
+                  - name
+                  - slot
+                  type: object
+                type: array
               pools:
                 items:
                   properties:
@@ -67,6 +107,7 @@ spec:
             required:
             - address
             - authRef
+            - networks
             - pools
             type: object
         type: object

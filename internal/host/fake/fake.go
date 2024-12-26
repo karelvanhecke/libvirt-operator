@@ -200,3 +200,21 @@ func (f *Fake) getPoolByName(name string) (*Pool, error) {
 	}
 	return f.pools[i], nil
 }
+
+func (f *Fake) DomainCreate(Dom libvirt.Domain) (err error) { return nil }
+func (f *Fake) DomainDefineXML(XML string) (rDom libvirt.Domain, err error) {
+	return libvirt.Domain{}, nil
+}
+func (f *Fake) DomainGetState(Dom libvirt.Domain, Flags uint32) (rState int32, rReason int32, err error) {
+	return 0, 0, nil
+}
+func (f *Fake) DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error) {
+	return "", nil
+}
+func (f *Fake) DomainInterfaceAddresses(Dom libvirt.Domain, Source uint32, Flags uint32) (rIfaces []libvirt.DomainInterface, err error) {
+	return nil, err
+}
+func (f *Fake) DomainLookupByName(Name string) (rDom libvirt.Domain, err error) {
+	return libvirt.Domain{}, nil
+}
+func (f *Fake) DomainShutdown(Dom libvirt.Domain) (err error) { return nil }

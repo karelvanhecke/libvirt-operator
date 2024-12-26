@@ -31,6 +31,13 @@ type Client interface {
 	Connect() error
 	Disconnected() <-chan struct{}
 	Disconnect() error
+	DomainCreate(Dom libvirt.Domain) (err error)
+	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
+	DomainGetState(Dom libvirt.Domain, Flags uint32) (rState int32, rReason int32, err error)
+	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
+	DomainInterfaceAddresses(Dom libvirt.Domain, Source uint32, Flags uint32) (rIfaces []libvirt.DomainInterface, err error)
+	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
+	DomainShutdown(Dom libvirt.Domain) (err error)
 	IsConnected() bool
 	StoragePoolLookupByName(name string) (rPool libvirt.StoragePool, err error)
 	StorageVolLookupByName(pool libvirt.StoragePool, name string) (rVol libvirt.StorageVol, err error)

@@ -27,6 +27,24 @@ type Pool struct {
 	Default *bool `json:"default,omitempty"`
 }
 
+type Network struct {
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
+	Default *bool `json:"default,omitempty"`
+	// +kubebuilder:validation:Enum=network;bridge;direct
+	// +kubebuilder:validation:Required
+	Type string `json:"type"`
+}
+
+type PCIPassthrough struct {
+	Name     string `json:"name"`
+	Domain   string `json:"domain"`
+	Bus      string `json:"bus"`
+	Slot     string `json:"slot"`
+	Function string `json:"function"`
+}
+
 type HostSpec struct {
 	// +kubebuilder:validation:Required
 	Address string `json:"address"`
@@ -35,6 +53,11 @@ type HostSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:Required
 	Pools []Pool `json:"pools"`
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:Required
+	Networks []Network `json:"networks"`
+	// +kubebuilder:validation:Optional
+	PCIPassthrough []PCIPassthrough `json:"pciPassthrough,omitempty"`
 
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535

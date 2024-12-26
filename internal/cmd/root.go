@@ -194,6 +194,14 @@ func runOperator() {
 		os.Exit(1)
 	}
 
+	if err := (&controller.DomainReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup domain controller with manager")
+		os.Exit(1)
+	}
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "failed to start manager")
 		os.Exit(1)

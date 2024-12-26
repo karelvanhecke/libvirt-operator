@@ -64,19 +64,14 @@ type VolumeSpec struct {
 	BackingStoreRef *ResourceRef `json:"backingStoreRef,omitempty"`
 }
 
-// +kubebuilder:validation:Optional
-type VolumeStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-}
-
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type Volume struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VolumeSpec   `json:"spec,omitempty"`
-	Status VolumeStatus `json:"status,omitempty"`
+	Spec   VolumeSpec `json:"spec,omitempty"`
+	Status Status     `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
