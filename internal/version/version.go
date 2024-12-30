@@ -22,16 +22,13 @@ import (
 )
 
 var (
-	version   = "dev"
-	commit    = "N/A"
-	buildDate = "N/A"
+	version = ""
+	commit  = ""
 )
 
 func Info() {
-	fmt.Printf("version: %s\ncommit: %s\nbuild date: %s\ngo version: %s\nplatform: %s\n",
+	fmt.Printf("version: %s\ncommit: %s\nplatform: %s\n",
 		version,
 		commit,
-		buildDate,
-		runtime.Version(),
 		runtime.GOOS+"/"+runtime.GOARCH)
 }
