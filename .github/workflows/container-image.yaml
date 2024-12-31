@@ -59,9 +59,9 @@ jobs:
           images: |
             ghcr.io/karelvanhecke/libvirt-operator
           tags: |
-            type=semver,pattern={{raw}},priority=990
-            type=semver,pattern=v{{major}}.{{minor}}
-            type=semver,pattern=v{{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
+            type=semver,pattern={{version}},priority=990,prefix=v
+            type=semver,pattern={{major}}.{{minor}},prefix=v
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }},prefix=v
             type=ref,event=pr
             type=sha,format=long,enable=${{ !startsWith(github.ref, 'refs/tags/') }}
             type=edge,enable=${{ startsWith(github.ref, 'refs/heads/') }},priority=90
