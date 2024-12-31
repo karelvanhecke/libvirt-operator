@@ -17,18 +17,51 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/karelvanhecke/libvirt-operator/internal/version"
 	"github.com/spf13/cobra"
 )
 
 func newVersionCmd() *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Show version info",
 		Run: func(_ *cobra.Command, _ []string) {
-			version.Info()
+			runVersion(output)
 		},
 	}
 
+	cmd.Flags().StringVarP(&output, "output", "o", "", "set the version output format")
+
 	return cmd
+}
+
+func runVersion(output string) {
+	i := version.NewInfo()
+
+	var o string
+
+	switch output {
+	case "json":
+		info, err := i.JSON()
+		if err != nil {
+			o = err.Error()
+			break
+		}
+		o = info
+	case "yaml":
+		info, err := i.YAML()
+		if err != nil {
+			o = err.Error()
+			break
+		}
+		o = info
+	default:
+		o = i.String()
+	}
+
+	fmt.Println(o)
 }

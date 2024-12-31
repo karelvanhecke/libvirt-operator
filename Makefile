@@ -1,6 +1,4 @@
-VERSION?=$(shell git rev-parse --abbrev-ref HEAD)
-COMMIT?=$(shell git rev-parse HEAD)
-DOCKER_TAG=$(shell echo $(VERSION) | tr '/' '-')
+VERSION?=sha-$(shell git rev-parse HEAD)
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
 KIND_VERSION=v0.26.0
@@ -56,18 +54,16 @@ test:
 .PHONY: build-binary
 build-binary:
 	@CGO_ENABLED=0 go build -o bin/operator \
-		-ldflags "-s -w -X 'github.com/karelvanhecke/libvirt-operator/internal/version.version=$(VERSION)' \
-		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.commit=$(COMMIT)' \
-		-X 'github.com/karelvanhecke/libvirt-operator/internal/version.buildDate=$(BUILD_DATE)'" \
+		-ldflags "-s -w -X 'github.com/karelvanhecke/libvirt-operator/internal/version.version=$(VERSION)'" \
+		-trimpath \
 		github.com/karelvanhecke/libvirt-operator/cmd/operator
 
 .PHONY: build-container
 build-container:
 	@docker buildx build \
 		--build-arg VERSION=$(VERSION) \
-		--build-arg COMMIT=$(COMMIT) \
 		--load \
-		-t ghcr.io/karelvanhecke/libvirt-operator:$(DOCKER_TAG) .
+		-t ghcr.io/karelvanhecke/libvirt-operator:$(VERSION) .
 
 .PHONY: create-kind-cluster
 create-kind-cluster:
@@ -75,9 +71,9 @@ create-kind-cluster:
 
 .PHONY: deploy-to-kind-cluster
 deploy-to-kind-cluster:
-	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(DOCKER_TAG) && \
+	@kind load docker-image --name operator-dev ghcr.io/karelvanhecke/libvirt-operator:$(VERSION) && \
 		mkdir -p ./install/development && \
-		TAG=$(DOCKER_TAG) envsubst < ./hack/kustomization.yaml.txt > ./install/development/kustomization.yaml && \
+		TAG=$(VERSION) envsubst < ./hack/kustomization.yaml.txt > ./install/development/kustomization.yaml && \
 		kubectl apply --context kind-operator-dev -k ./install/development && \
 		kubectl -n libvirt-operator wait --for=condition=Available=true deployment/libvirt-operator
 
