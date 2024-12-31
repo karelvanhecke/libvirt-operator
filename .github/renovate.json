@@ -70,7 +70,7 @@
         },
         {
             "matchDepNames": "ghcr.io/karelvanhecke/libvirt-operator",
-            "matchFileNames": ["install/main/kustomization.yaml"],
+            "matchFileNames": ["install/edge/kustomization.yaml"],
             "automerge": true,
             "schedule": null
         }
