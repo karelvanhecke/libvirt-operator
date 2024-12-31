@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
@@ -55,7 +54,6 @@ const (
 
 // Condition messages
 const (
-	ConditionMessagePoolNotAvailable         = "Pool is not available"
 	ConditionMessageBackingStoreNotExist     = "Backing store volume does not exist"
 	ConditionMessageBackingStoreNotCreated   = "Backing store volume has not yet been created"
 	ConditionMessageIsBackingStore           = "Volume is currently in use as a backingstore"
@@ -125,24 +123,21 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	hClient, end := hostEntry.Session()
 	defer end()
 
-	var pool string
-	if p := volume.Spec.Pool; p != nil {
-		if i := slices.IndexFunc(hostRef.Spec.Pools, func(hp v1alpha1.Pool) bool { return hp.Name == *p }); i != -1 {
-			pool = *p
-		} else {
-			return ctrl.Result{}, client.IgnoreNotFound(errors.New("pool not found"))
-		}
-	} else {
-		if i := slices.IndexFunc(hostRef.Spec.Pools, func(hp v1alpha1.Pool) bool {
-			if hp.Default != nil {
-				return *hp.Default
+	pool, found := poolAvailable(hostRef.Spec.Pools, volume.Spec.Pool)
+	if !found {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
+			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessagePoolNotAvailable,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Time{Time: time.Now()},
+			})
+			if err := r.Status().Update(ctx, volume); err != nil {
+				return ctrl.Result{}, err
 			}
-			return false
-		}); i != -1 {
-			pool = hostRef.Spec.Pools[i].Name
-		} else {
-			pool = hostRef.Spec.Pools[0].Name
 		}
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	size := &libvirtxml.StorageVolumeSize{}
@@ -230,7 +225,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
 	switch {
 	case volume.Spec.Source != nil:
-		if err := action.WithSource(volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {
+		if err := action.WithRemoteSource(volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {
 			return err
 		}
 	case volume.Spec.BackingStoreRef != nil:

@@ -36,6 +36,7 @@ rules:
   - libvirt.karelvanhecke.com
   resources:
   - auths
+  - cloudinits
   - hosts
   - volumes
   verbs:
@@ -50,6 +51,7 @@ rules:
   - libvirt.karelvanhecke.com
   resources:
   - auths/finalizers
+  - cloudinits/finalizers
   - hosts/finalizers
   - volumes/finalizers
   verbs:
@@ -58,6 +60,7 @@ rules:
   - libvirt.karelvanhecke.com
   resources:
   - auths/status
+  - cloudinits/status
   - volumes/status
   verbs:
   - get

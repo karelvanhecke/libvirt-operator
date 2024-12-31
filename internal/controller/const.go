@@ -45,8 +45,9 @@ const (
 
 // Condition messages
 const (
-	ConditionMessageHostNotFound   = "Host not found"
-	ConditionMessageWaitingForHost = "Waiting for host to become available"
+	ConditionMessageHostNotFound     = "Host not found"
+	ConditionMessageWaitingForHost   = "Waiting for host to become available"
+	ConditionMessagePoolNotAvailable = "Pool is not available"
 )
 
 // Auth file names
