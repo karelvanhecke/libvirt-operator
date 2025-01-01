@@ -44,6 +44,7 @@ type Client interface {
 	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
 	NetworkIsActive(Net libvirt.Network) (rActive int32, err error)
 	NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error)
+	NodeDeviceIsActive(Name string) (rActive int32, err error)
 	StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error)
 	StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err error)
 	StoragePoolLookupByName(name string) (rPool libvirt.StoragePool, err error)
