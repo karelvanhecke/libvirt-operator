@@ -123,7 +123,7 @@ func TestStoragePoolLookupByName(t *testing.T) {
 	name := "fake-pool"
 	f.WithPool(libvirtxml.StoragePool{
 		Name: name,
-	}, nil)
+	}, int32(libvirt.StoragePoolRunning), nil)
 
 	p, err := f.StoragePoolLookupByName(name)
 	if err != nil {
@@ -152,7 +152,7 @@ func TestStorageVolLookupByName(t *testing.T) {
 	name := "fake-volume"
 	f.WithPool(libvirtxml.StoragePool{
 		Name: pool,
-	}, []*libvirtxml.StorageVolume{
+	}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{
 		{
 			Name: name,
 		},
@@ -174,7 +174,7 @@ func TestStorageVolNotFound(t *testing.T) {
 	pool := "fake-pool"
 	f.WithPool(libvirtxml.StoragePool{
 		Name: pool,
-	}, nil)
+	}, int32(libvirt.StoragePoolRunning), nil)
 
 	_, err := f.StorageVolLookupByName(libvirt.StoragePool{Name: pool}, "fake-volume")
 	if err == nil {
@@ -194,7 +194,7 @@ func TestStorageVolGetXMLDesc(t *testing.T) {
 
 	f.WithPool(libvirtxml.StoragePool{
 		Name: pool,
-	}, []*libvirtxml.StorageVolume{{Name: name}})
+	}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: name}})
 
 	s, err := f.StorageVolGetXMLDesc(libvirt.StorageVol{Name: name, Pool: pool}, 0)
 	if err != nil {
@@ -217,7 +217,7 @@ func TestStorageVolCreateXML(t *testing.T) {
 	pool := "fake-pool"
 	name := "fake-volume"
 
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, nil)
+	f.WithPool(libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
 	v := libvirtxml.StorageVolume{
 		Name: name,
@@ -247,7 +247,7 @@ func TestStorageVolAlreadyExists(t *testing.T) {
 		Name: name,
 	}
 
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	s, err := v.Marshal()
 	if err != nil {
@@ -271,7 +271,7 @@ func TestStorageVolUpload(t *testing.T) {
 	content := "fake-content"
 
 	v := &libvirtxml.StorageVolume{Name: name, Capacity: &libvirtxml.StorageVolumeSize{}}
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	if err := f.StorageVolUpload(libvirt.StorageVol{Name: name, Pool: pool}, strings.NewReader(content), 0, 0, 0); err != nil {
 		t.Fail()
@@ -291,7 +291,7 @@ func TestStorageVolResize(t *testing.T) {
 	newCap := uint64(2)
 
 	v := &libvirtxml.StorageVolume{Name: name, Capacity: &libvirtxml.StorageVolumeSize{Value: 1}}
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	if err := f.StorageVolResize(libvirt.StorageVol{Name: name, Pool: pool}, newCap, 0); err != nil {
 		t.Fail()
@@ -307,7 +307,7 @@ func TestStorageVolDelete(t *testing.T) {
 
 	pool := "fake-pool"
 	name := "fake-volume"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{{Name: name}})
+	f.WithPool(libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: name}})
 
 	if err := f.StorageVolDelete(libvirt.StorageVol{Name: name, Pool: pool}, 0); err != nil {
 		t.Fail()

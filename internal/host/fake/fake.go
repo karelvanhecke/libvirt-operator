@@ -34,6 +34,8 @@ const (
 	ErrDomainAlreadyExist   = "domain does not exist"
 	ErrDomainAlreadyRunning = "domain is already running"
 	ErrDomainAlreadyShutoff = "domain is already shutoff"
+	ErrNetworkNotExist      = "network does not exist"
+	ErrNodedevNotExist      = "Node device does not exist"
 )
 
 type Fake struct {
@@ -42,6 +44,8 @@ type Fake struct {
 	disconnected   chan struct{}
 	pools          []*Pool
 	domains        []*Domain
+	networks       []*Network
+	nodedevs       []*libvirtxml.NodeDevice
 }
 
 func New() *Fake {
@@ -58,9 +62,10 @@ func (f *Fake) WithDisconnectFail() {
 	f.disconnectFail = true
 }
 
-func (f *Fake) WithPool(pool libvirtxml.StoragePool, volumes []*libvirtxml.StorageVolume) {
+func (f *Fake) WithPool(pool libvirtxml.StoragePool, state int32, volumes []*libvirtxml.StorageVolume) {
 	p := &Pool{
 		xml:     pool,
+		state:   state,
 		volumes: volumes,
 	}
 	f.pools = append(f.pools, p)
@@ -300,4 +305,79 @@ func (f *Fake) getDomainByName(name string) (*Domain, error) {
 		}
 	}
 	return f.domains[i], nil
+}
+
+func (f *Fake) WithNodeDev(nodedev *libvirtxml.NodeDevice) {
+	f.nodedevs = append(f.nodedevs, nodedev)
+}
+
+func (f *Fake) WithNetwork(network *libvirtxml.Network, state int32) {
+	f.networks = append(f.networks, &Network{xml: network, state: 1})
+}
+
+func (f *Fake) ConnectListAllNodeDevices(NeedResults int32, Flags uint32) (rDevices []libvirt.NodeDevice, rRet uint32, err error) {
+	for _, nodedev := range f.nodedevs {
+		rDevices = append(rDevices, libvirt.NodeDevice{
+			Name: nodedev.Name,
+		})
+		rRet += rRet
+	}
+
+	return
+}
+
+func (f *Fake) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error) {
+	for _, network := range f.networks {
+		rNets = append(rNets, libvirt.Network{
+			Name: network.xml.Name,
+		})
+		rRet += rRet
+	}
+
+	return
+}
+
+func (f *Fake) ConnectListAllStoragePools(NeedResults int32, Flags libvirt.ConnectListAllStoragePoolsFlags) (rPools []libvirt.StoragePool, rRet uint32, err error) {
+	for _, pool := range f.pools {
+		rPools = append(rPools, libvirt.StoragePool{
+			Name: pool.xml.Name,
+		})
+		rRet += rRet
+	}
+
+	return
+}
+
+func (f *Fake) NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error) {
+	i := slices.IndexFunc(f.networks, func(n *Network) bool { return n.xml.Name == Net.Name })
+	if i == -1 {
+		return "", libvirt.Error{Code: uint32(libvirt.ErrNoNetwork), Message: ErrNetworkNotExist}
+	}
+
+	return f.networks[i].xml.Marshal()
+}
+
+func (f *Fake) NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error) {
+	i := slices.IndexFunc(f.nodedevs, func(n *libvirtxml.NodeDevice) bool { return n.Name == Name })
+	if i == -1 {
+		return "", libvirt.Error{Code: uint32(libvirt.ErrNoNodeDevice), Message: ErrNodedevNotExist}
+	}
+
+	return f.nodedevs[i].Marshal()
+}
+func (f *Fake) StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error) {
+	p, err := f.getPoolByName(Pool.Name)
+	if err != nil {
+		return "", err
+	}
+
+	return p.xml.Marshal()
+}
+
+func (f *Fake) NetworkIsActive(Net libvirt.Network) (rActive int32, err error) {
+	return 0, nil
+}
+
+func (f *Fake) StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err error) {
+	return 0, nil
 }

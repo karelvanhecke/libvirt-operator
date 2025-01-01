@@ -29,6 +29,9 @@ var (
 
 type Client interface {
 	Connect() error
+	ConnectListAllNodeDevices(NeedResults int32, Flags uint32) (rDevices []libvirt.NodeDevice, rRet uint32, err error)
+	ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error)
+	ConnectListAllStoragePools(NeedResults int32, Flags libvirt.ConnectListAllStoragePoolsFlags) (rPools []libvirt.StoragePool, rRet uint32, err error)
 	Disconnected() <-chan struct{}
 	Disconnect() error
 	DomainCreate(Dom libvirt.Domain) (err error)
@@ -38,6 +41,11 @@ type Client interface {
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainShutdown(Dom libvirt.Domain) (err error)
 	IsConnected() bool
+	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
+	NetworkIsActive(Net libvirt.Network) (rActive int32, err error)
+	NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error)
+	StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error)
+	StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err error)
 	StoragePoolLookupByName(name string) (rPool libvirt.StoragePool, err error)
 	StorageVolLookupByName(pool libvirt.StoragePool, name string) (rVol libvirt.StorageVol, err error)
 	StorageVolGetXMLDesc(vol libvirt.StorageVol, flags uint32) (rXML string, err error)
