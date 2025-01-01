@@ -465,6 +465,13 @@ func TestDomainLookupByNameNotFound(t *testing.T) {
 	if err.Error() != fake.ErrDomainNotExist {
 		t.Fail()
 	}
+	e, ok := err.(libvirt.Error)
+	if !ok {
+		t.Fail()
+	}
+	if e.Code != uint32(libvirt.ErrNoDomain) {
+		t.Fail()
+	}
 }
 
 func TestDomainGetXMLDesc(t *testing.T) {

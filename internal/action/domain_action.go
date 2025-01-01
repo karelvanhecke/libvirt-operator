@@ -24,14 +24,61 @@ import (
 
 type DomainAction struct {
 	host.Client
-	name  string
-	id    *libvirt.Domain
-	state *libvirtxml.Domain
+	name         string
+	id           *libvirt.Domain
+	definedState *libvirtxml.Domain
+	state        int32
 }
 
 func NewDomainAction(client host.Client, name string) (*DomainAction, error) {
-	return &DomainAction{
+	d, err := client.DomainLookupByName(name)
+
+	a := &DomainAction{
 		Client: client,
 		name:   name,
-	}, nil
+	}
+
+	if err != nil {
+		if e, ok := err.(libvirt.Error); ok {
+			if e.Code == uint32(libvirt.ErrNoDomain) {
+				return a, err
+			}
+		}
+		return nil, err
+	}
+
+	a.id = &d
+
+	xml, err := a.DomainGetXMLDesc(d, 0)
+	if err != nil {
+		return nil, err
+	}
+	a.definedState = &libvirtxml.Domain{}
+	if err := a.definedState.Unmarshal(xml); err != nil {
+		return nil, err
+	}
+
+	state, _, err := a.DomainGetState(d, 0)
+	if err != nil {
+		return nil, err
+	}
+	a.state = state
+
+	return a, nil
+}
+
+func (a *DomainAction) State() (exists bool, state int32) {
+	return a.id != nil, a.state
+}
+
+func (a *DomainAction) Create() error {
+	return nil
+}
+
+func (a *DomainAction) Update() error {
+	return nil
+}
+
+func (a *DomainAction) Delete() error {
+	return nil
 }

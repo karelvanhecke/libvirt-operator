@@ -294,7 +294,10 @@ func (f *Fake) DomainShutdown(Dom libvirt.Domain) (err error) {
 func (f *Fake) getDomainByName(name string) (*Domain, error) {
 	i := slices.IndexFunc(f.domains, func(domain *Domain) bool { return domain.xml.Name == name })
 	if i == -1 {
-		return nil, errors.New(ErrDomainNotExist)
+		return nil, libvirt.Error{
+			Code:    uint32(libvirt.ErrNoDomain),
+			Message: ErrDomainNotExist,
+		}
 	}
 	return f.domains[i], nil
 }
