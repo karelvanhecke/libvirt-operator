@@ -26,10 +26,14 @@ import (
 )
 
 const (
-	ErrConnectFailed     = "connect to host failed"
-	ErrDisconnectFailed  = "disconnect from host failed"
-	ErrPoolNotExist      = "pool does not exist"
-	ErrUnsupportedDialer = "unsupported dialer"
+	ErrConnectFailed        = "connect to host failed"
+	ErrDisconnectFailed     = "disconnect from host failed"
+	ErrPoolNotExist         = "pool does not exist"
+	ErrUnsupportedDialer    = "unsupported dialer"
+	ErrDomainNotExist       = "domain does not exist"
+	ErrDomainAlreadyExist   = "domain does not exist"
+	ErrDomainAlreadyRunning = "domain is already running"
+	ErrDomainAlreadyShutoff = "domain is already shutoff"
 )
 
 type Fake struct {
@@ -37,6 +41,7 @@ type Fake struct {
 	disconnectFail bool
 	disconnected   chan struct{}
 	pools          []*Pool
+	domains        []*Domain
 }
 
 func New() *Fake {
@@ -201,20 +206,95 @@ func (f *Fake) getPoolByName(name string) (*Pool, error) {
 	return f.pools[i], nil
 }
 
-func (f *Fake) DomainCreate(Dom libvirt.Domain) (err error) { return nil }
+func (f *Fake) WithDomain(domain *libvirtxml.Domain, state int32) {
+	f.domains = append(f.domains, &Domain{
+		state: state,
+		xml:   domain,
+	})
+}
+
+func (f *Fake) DomainCreate(Dom libvirt.Domain) (err error) {
+	d, err := f.getDomainByName(Dom.Name)
+	if err != nil {
+		return err
+	}
+
+	if d.state == int32(libvirt.DomainRunning) {
+		return errors.New(ErrDomainAlreadyRunning)
+	}
+
+	d.state = int32(libvirt.DomainRunning)
+	d.reason = int32(libvirt.DomainRunningBooted)
+
+	return nil
+}
+
 func (f *Fake) DomainDefineXML(XML string) (rDom libvirt.Domain, err error) {
-	return libvirt.Domain{}, nil
+	d := &libvirtxml.Domain{}
+	if err := d.Unmarshal(XML); err != nil {
+		return libvirt.Domain{}, err
+	}
+
+	_, err = f.getDomainByName(d.Name)
+	if err == nil {
+		return libvirt.Domain{}, errors.New(ErrDomainAlreadyExist)
+	}
+	if err.Error() != ErrDomainNotExist {
+		return libvirt.Domain{}, err
+	}
+
+	f.domains = append(f.domains, &Domain{state: int32(libvirt.DomainShutoff), xml: d})
+
+	return libvirt.Domain{Name: d.Name}, nil
 }
+
 func (f *Fake) DomainGetState(Dom libvirt.Domain, Flags uint32) (rState int32, rReason int32, err error) {
-	return 0, 0, nil
+	d, err := f.getDomainByName(Dom.Name)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return d.state, d.reason, nil
 }
+
 func (f *Fake) DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error) {
-	return "", nil
+	d, err := f.getDomainByName(Dom.Name)
+	if err != nil {
+		return "", err
+	}
+
+	return d.xml.Marshal()
 }
-func (f *Fake) DomainInterfaceAddresses(Dom libvirt.Domain, Source uint32, Flags uint32) (rIfaces []libvirt.DomainInterface, err error) {
-	return nil, err
-}
+
 func (f *Fake) DomainLookupByName(Name string) (rDom libvirt.Domain, err error) {
-	return libvirt.Domain{}, nil
+	d, err := f.getDomainByName(Name)
+	if err != nil {
+		return libvirt.Domain{}, err
+	}
+
+	return libvirt.Domain{Name: d.xml.Name}, nil
 }
-func (f *Fake) DomainShutdown(Dom libvirt.Domain) (err error) { return nil }
+
+func (f *Fake) DomainShutdown(Dom libvirt.Domain) (err error) {
+	d, err := f.getDomainByName(Dom.Name)
+	if err != nil {
+		return err
+	}
+
+	if d.state == int32(libvirt.DomainShutoff) {
+		return errors.New(ErrDomainAlreadyShutoff)
+	}
+
+	d.state = int32(libvirt.DomainShutoff)
+	d.reason = int32(libvirt.DomainShutoffShutdown)
+
+	return nil
+}
+
+func (f *Fake) getDomainByName(name string) (*Domain, error) {
+	i := slices.IndexFunc(f.domains, func(domain *Domain) bool { return domain.xml.Name == name })
+	if i == -1 {
+		return nil, errors.New(ErrDomainNotExist)
+	}
+	return f.domains[i], nil
+}

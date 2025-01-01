@@ -35,7 +35,6 @@ type Client interface {
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainGetState(Dom libvirt.Domain, Flags uint32) (rState int32, rReason int32, err error)
 	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
-	DomainInterfaceAddresses(Dom libvirt.Domain, Source uint32, Flags uint32) (rIfaces []libvirt.DomainInterface, err error)
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainShutdown(Dom libvirt.Domain) (err error)
 	IsConnected() bool

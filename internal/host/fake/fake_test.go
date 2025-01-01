@@ -322,3 +322,168 @@ func TestStorageVolDelete(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestDomainDefineXML(t *testing.T) {
+	f := fake.New()
+
+	x := &libvirtxml.Domain{
+		Name: "fake-domain",
+	}
+
+	s, err := x.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := f.DomainDefineXML(s)
+	if err != nil {
+		t.Fail()
+	}
+	if d.Name != x.Name {
+		t.Fail()
+	}
+}
+
+func TestDomainCreate(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	if err := f.DomainCreate(d); err != nil {
+		t.Fail()
+	}
+
+	state, reason, err := f.DomainGetState(d, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if state != int32(libvirt.DomainRunning) || reason != int32(libvirt.DomainRunningBooted) {
+		t.Fail()
+	}
+}
+
+func TestDomainShutdown(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainRunning))
+
+	if err := f.DomainShutdown(d); err != nil {
+		t.Fail()
+	}
+
+	state, reason, err := f.DomainGetState(d, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if state != int32(libvirt.DomainShutoff) || reason != int32(libvirt.DomainShutoffShutdown) {
+		t.Fail()
+	}
+}
+
+func TestDomainDefineXMLAlreadyExists(t *testing.T) {
+	f := fake.New()
+
+	d := &libvirtxml.Domain{
+		Name: "fake-domain",
+	}
+
+	f.WithDomain(d, 0)
+
+	s, err := d.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = f.DomainDefineXML(s)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyExist {
+		t.Fail()
+	}
+}
+
+func TestDomainCreateAlreadyRunning(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainRunning))
+
+	err := f.DomainCreate(d)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyRunning {
+		t.Fail()
+	}
+}
+
+func TestDomainCreateAlreadyShutoff(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	err := f.DomainShutdown(d)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyShutoff {
+		t.Fail()
+	}
+}
+
+func TestDomainLookupByName(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	l, err := f.DomainLookupByName(name)
+	if err != nil {
+		t.Fail()
+	}
+	if l.Name != d.Name {
+		t.Fail()
+	}
+}
+
+func TestDomainLookupByNameNotFound(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+
+	_, err := f.DomainLookupByName(name)
+	if err == nil {
+		t.Fail()
+	}
+	if err.Error() != fake.ErrDomainNotExist {
+		t.Fail()
+	}
+}
+
+func TestDomainGetXMLDesc(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+
+	d := &libvirtxml.Domain{Name: name, VCPU: &libvirtxml.DomainVCPU{Value: 1}}
+	f.WithDomain(d, int32(libvirt.DomainShutoff))
+
+	s, err := f.DomainGetXMLDesc(libvirt.Domain{Name: name}, 0)
+	if err != nil {
+		t.Fail()
+	}
+	x := &libvirtxml.Domain{}
+	if err := x.Unmarshal(s); err != nil {
+		t.Fatal(err)
+	}
+	if x.Name != d.Name || x.VCPU.Value != d.VCPU.Value {
+		t.Fail()
+	}
+}
