@@ -12,10 +12,18 @@
     "customManagers":[
         {
             "customType": "regex",
-            "fileMatch": "^(?:Makefile|.github/workflows/.+\\.yaml)$",
+            "fileMatch": "^(?:Makefile|\\.github/workflows/.+\\.yaml)$",
             "matchStrings": [
                 "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?: packageName=(?<packageName>.+?))?(?: versioning=(?<versioning>[a-z-]+?))?\\s+.+(?:_VERSION|-version)(?:=|: )'?(?<currentValue>v?[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?'?"
             ]
+        },
+        {
+            "customType": "regex",
+            "fileMatch": "^install/base/crd/.+\\.yaml$",
+            "depNameTemplate": "kubernetes-sigs/controller-tools",
+            "datasourceTemplate": "github-releases",
+            "versioningTemplate": "semver",
+            "matchStrings": ["controller-gen\\.kubebuilder\\.io/version: (?<currentValue>v?[0-9.]+)"]
         }
     ],
     "packageRules": [
