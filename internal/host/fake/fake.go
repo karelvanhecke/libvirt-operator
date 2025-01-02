@@ -62,7 +62,7 @@ func (f *Fake) WithDisconnectFail() {
 	f.disconnectFail = true
 }
 
-func (f *Fake) WithPool(pool libvirtxml.StoragePool, state int32, volumes []*libvirtxml.StorageVolume) {
+func (f *Fake) WithPool(pool *libvirtxml.StoragePool, state int32, volumes []*libvirtxml.StorageVolume) {
 	p := &Pool{
 		xml:     pool,
 		state:   state,
@@ -320,7 +320,7 @@ func (f *Fake) ConnectListAllNodeDevices(NeedResults int32, Flags uint32) (rDevi
 		rDevices = append(rDevices, libvirt.NodeDevice{
 			Name: nodedev.xml.Name,
 		})
-		rRet += rRet
+		rRet += 1
 	}
 
 	return
@@ -331,7 +331,7 @@ func (f *Fake) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectLi
 		rNets = append(rNets, libvirt.Network{
 			Name: network.xml.Name,
 		})
-		rRet += rRet
+		rRet += 1
 	}
 
 	return
@@ -342,7 +342,7 @@ func (f *Fake) ConnectListAllStoragePools(NeedResults int32, Flags libvirt.Conne
 		rPools = append(rPools, libvirt.StoragePool{
 			Name: pool.xml.Name,
 		})
-		rRet += rRet
+		rRet += 1
 	}
 
 	return

@@ -31,7 +31,7 @@ const (
 
 type Pool struct {
 	state   int32
-	xml     libvirtxml.StoragePool
+	xml     *libvirtxml.StoragePool
 	volumes []*libvirtxml.StorageVolume
 }
 
