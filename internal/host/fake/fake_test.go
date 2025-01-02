@@ -121,9 +121,9 @@ func TestStoragePoolLookupByName(t *testing.T) {
 	f := fake.New()
 
 	name := "fake-pool"
-	f.WithPool(libvirtxml.StoragePool{
+	f.WithPool(&libvirtxml.StoragePool{
 		Name: name,
-	}, nil)
+	}, int32(libvirt.StoragePoolRunning), nil)
 
 	p, err := f.StoragePoolLookupByName(name)
 	if err != nil {
@@ -150,9 +150,9 @@ func TestStorageVolLookupByName(t *testing.T) {
 
 	pool := "fake-pool"
 	name := "fake-volume"
-	f.WithPool(libvirtxml.StoragePool{
+	f.WithPool(&libvirtxml.StoragePool{
 		Name: pool,
-	}, []*libvirtxml.StorageVolume{
+	}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{
 		{
 			Name: name,
 		},
@@ -172,9 +172,9 @@ func TestStorageVolNotFound(t *testing.T) {
 	f := fake.New()
 
 	pool := "fake-pool"
-	f.WithPool(libvirtxml.StoragePool{
+	f.WithPool(&libvirtxml.StoragePool{
 		Name: pool,
-	}, nil)
+	}, int32(libvirt.StoragePoolRunning), nil)
 
 	_, err := f.StorageVolLookupByName(libvirt.StoragePool{Name: pool}, "fake-volume")
 	if err == nil {
@@ -192,9 +192,9 @@ func TestStorageVolGetXMLDesc(t *testing.T) {
 	pool := "fake-pool"
 	name := "fake-volume"
 
-	f.WithPool(libvirtxml.StoragePool{
+	f.WithPool(&libvirtxml.StoragePool{
 		Name: pool,
-	}, []*libvirtxml.StorageVolume{{Name: name}})
+	}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: name}})
 
 	s, err := f.StorageVolGetXMLDesc(libvirt.StorageVol{Name: name, Pool: pool}, 0)
 	if err != nil {
@@ -217,7 +217,7 @@ func TestStorageVolCreateXML(t *testing.T) {
 	pool := "fake-pool"
 	name := "fake-volume"
 
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, nil)
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
 	v := libvirtxml.StorageVolume{
 		Name: name,
@@ -247,7 +247,7 @@ func TestStorageVolAlreadyExists(t *testing.T) {
 		Name: name,
 	}
 
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	s, err := v.Marshal()
 	if err != nil {
@@ -271,7 +271,7 @@ func TestStorageVolUpload(t *testing.T) {
 	content := "fake-content"
 
 	v := &libvirtxml.StorageVolume{Name: name, Capacity: &libvirtxml.StorageVolumeSize{}}
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	if err := f.StorageVolUpload(libvirt.StorageVol{Name: name, Pool: pool}, strings.NewReader(content), 0, 0, 0); err != nil {
 		t.Fail()
@@ -291,7 +291,7 @@ func TestStorageVolResize(t *testing.T) {
 	newCap := uint64(2)
 
 	v := &libvirtxml.StorageVolume{Name: name, Capacity: &libvirtxml.StorageVolumeSize{Value: 1}}
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{v})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{v})
 
 	if err := f.StorageVolResize(libvirt.StorageVol{Name: name, Pool: pool}, newCap, 0); err != nil {
 		t.Fail()
@@ -307,7 +307,7 @@ func TestStorageVolDelete(t *testing.T) {
 
 	pool := "fake-pool"
 	name := "fake-volume"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{{Name: name}})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: name}})
 
 	if err := f.StorageVolDelete(libvirt.StorageVol{Name: name, Pool: pool}, 0); err != nil {
 		t.Fail()
@@ -319,6 +319,343 @@ func TestStorageVolDelete(t *testing.T) {
 	}
 
 	if err.Error() != fake.ErrVolumeNotExist {
+		t.Fail()
+	}
+}
+
+func TestDomainDefineXML(t *testing.T) {
+	f := fake.New()
+
+	x := &libvirtxml.Domain{
+		Name: "fake-domain",
+	}
+
+	s, err := x.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := f.DomainDefineXML(s)
+	if err != nil {
+		t.Fail()
+	}
+	if d.Name != x.Name {
+		t.Fail()
+	}
+}
+
+func TestDomainCreate(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	if err := f.DomainCreate(d); err != nil {
+		t.Fail()
+	}
+
+	state, reason, err := f.DomainGetState(d, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if state != int32(libvirt.DomainRunning) || reason != int32(libvirt.DomainRunningBooted) {
+		t.Fail()
+	}
+}
+
+func TestDomainShutdown(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainRunning))
+
+	if err := f.DomainShutdown(d); err != nil {
+		t.Fail()
+	}
+
+	state, reason, err := f.DomainGetState(d, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if state != int32(libvirt.DomainShutoff) || reason != int32(libvirt.DomainShutoffShutdown) {
+		t.Fail()
+	}
+}
+
+func TestDomainDefineXMLAlreadyExists(t *testing.T) {
+	f := fake.New()
+
+	d := &libvirtxml.Domain{
+		Name: "fake-domain",
+	}
+
+	f.WithDomain(d, 0)
+
+	s, err := d.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = f.DomainDefineXML(s)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyExist {
+		t.Fail()
+	}
+}
+
+func TestDomainCreateAlreadyRunning(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainRunning))
+
+	err := f.DomainCreate(d)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyRunning {
+		t.Fail()
+	}
+}
+
+func TestDomainCreateAlreadyShutoff(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	err := f.DomainShutdown(d)
+	if err == nil || err.Error() != fake.ErrDomainAlreadyShutoff {
+		t.Fail()
+	}
+}
+
+func TestDomainLookupByName(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+	d := libvirt.Domain{Name: name}
+
+	f.WithDomain(&libvirtxml.Domain{Name: name}, int32(libvirt.DomainShutoff))
+
+	l, err := f.DomainLookupByName(name)
+	if err != nil {
+		t.Fail()
+	}
+	if l.Name != d.Name {
+		t.Fail()
+	}
+}
+
+func TestDomainLookupByNameNotFound(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+
+	_, err := f.DomainLookupByName(name)
+	if err == nil {
+		t.Fail()
+	}
+	if err.Error() != fake.ErrDomainNotExist {
+		t.Fail()
+	}
+	e, ok := err.(libvirt.Error)
+	if !ok {
+		t.Fail()
+	}
+	if e.Code != uint32(libvirt.ErrNoDomain) {
+		t.Fail()
+	}
+}
+
+func TestDomainGetXMLDesc(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-domain"
+
+	d := &libvirtxml.Domain{Name: name, VCPU: &libvirtxml.DomainVCPU{Value: 1}}
+	f.WithDomain(d, int32(libvirt.DomainShutoff))
+
+	s, err := f.DomainGetXMLDesc(libvirt.Domain{Name: name}, 0)
+	if err != nil {
+		t.Fail()
+	}
+	x := &libvirtxml.Domain{}
+	if err := x.Unmarshal(s); err != nil {
+		t.Fatal(err)
+	}
+	if x.Name != d.Name || x.VCPU.Value != d.VCPU.Value {
+		t.Fail()
+	}
+}
+
+func TestConnectListAllNodeDevices(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-nodedev"
+
+	f.WithNodeDev(&libvirtxml.NodeDevice{Name: name}, 1)
+
+	devs, ret, err := f.ConnectListAllNodeDevices(0, 0)
+	if err != nil {
+		t.Fail()
+	}
+	if ret != 1 {
+		t.Fail()
+	}
+	if devs[0].Name != name {
+		t.Fail()
+	}
+}
+
+func TestConnectListAllNetworks(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-network"
+
+	f.WithNetwork(&libvirtxml.Network{Name: name}, 1)
+
+	nets, ret, err := f.ConnectListAllNetworks(0, 0)
+	if err != nil {
+		t.Fail()
+	}
+	if ret != 1 {
+		t.Fail()
+	}
+	if nets[0].Name != name {
+		t.Fail()
+	}
+}
+
+func TestConnectListAllStoragePools(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-pool"
+
+	f.WithPool(&libvirtxml.StoragePool{Name: name}, 1, nil)
+
+	nets, ret, err := f.ConnectListAllStoragePools(0, 0)
+	if err != nil {
+		t.Fail()
+	}
+	if ret != 1 {
+		t.Fail()
+	}
+	if nets[0].Name != name {
+		t.Fail()
+	}
+}
+
+func TestNetworkGetXMLDesc(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-network"
+
+	f.WithNetwork(&libvirtxml.Network{Name: name}, 1)
+
+	xml, err := f.NetworkGetXMLDesc(libvirt.Network{Name: name}, 0)
+	if err != nil {
+		t.Fail()
+	}
+
+	net := &libvirtxml.Network{}
+	if err := net.Unmarshal(xml); err != nil {
+		t.Fail()
+	}
+	if net.Name != name {
+		t.Fail()
+	}
+}
+
+func TestNodeDeviceGetXMLDesc(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-nodedev"
+
+	f.WithNodeDev(&libvirtxml.NodeDevice{Name: name}, 1)
+
+	xml, err := f.NodeDeviceGetXMLDesc(name, 0)
+	if err != nil {
+		t.Fail()
+	}
+
+	dev := &libvirtxml.NodeDevice{}
+	if err := dev.Unmarshal(xml); err != nil {
+		t.Fail()
+	}
+	if dev.Name != name {
+		t.Fail()
+	}
+}
+
+func TestStoragePoolGetXMLDesc(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-pool"
+
+	f.WithPool(&libvirtxml.StoragePool{Name: name}, 1, nil)
+
+	xml, err := f.StoragePoolGetXMLDesc(libvirt.StoragePool{Name: name}, 0)
+	if err != nil {
+		t.Fail()
+	}
+
+	pool := &libvirtxml.StoragePool{}
+	if err := pool.Unmarshal(xml); err != nil {
+		t.Fail()
+	}
+	if pool.Name != name {
+		t.Fail()
+	}
+}
+
+func TestNetworkIsActive(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-network"
+
+	f.WithNetwork(&libvirtxml.Network{Name: name}, 1)
+	active, err := f.NetworkIsActive(libvirt.Network{Name: name})
+	if err != nil {
+		t.Fail()
+	}
+	if active != 1 {
+		t.Fail()
+	}
+}
+
+func TestNodeDeviceIsActive(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-noddev"
+
+	f.WithNodeDev(&libvirtxml.NodeDevice{Name: name}, 1)
+	active, err := f.NodeDeviceIsActive(name)
+	if err != nil {
+		t.Fail()
+	}
+	if active != 1 {
+		t.Fail()
+	}
+}
+
+func TestStoragePoolIsActive(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-noddev"
+
+	f.WithPool(&libvirtxml.StoragePool{Name: name}, 1, nil)
+	active, err := f.StoragePoolIsActive(libvirt.StoragePool{Name: name})
+	if err != nil {
+		t.Fail()
+	}
+	if active != 1 {
 		t.Fail()
 	}
 }

@@ -32,7 +32,7 @@ func TestVolumeExists(t *testing.T) {
 
 	pool := "fake-pool"
 	volume := "fake-volume"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{{Name: volume}})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
 	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
 	if err != nil {
@@ -47,7 +47,7 @@ func TestVolumeNotExists(t *testing.T) {
 	f := fake.New()
 
 	pool := "fake-pool"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, nil)
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
 	a, err := action.NewVolumeAction(f, "fake-volume", pool, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
 	if err != nil {
@@ -66,7 +66,7 @@ func TestVolumeCreate(t *testing.T) {
 	format := "qcow2"
 	unit := "bytes"
 	value := uint64(1000)
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, nil)
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
 	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{Unit: unit, Value: value}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
 	if err != nil {
@@ -104,7 +104,7 @@ func TestVolumeCreateWithBackingStore(t *testing.T) {
 	value := uint64(1000)
 	path := "fake-path"
 	backingStore := "fake-backingstore"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{
 		{
 			Name: backingStore,
 			Capacity: &libvirtxml.StorageVolumeSize{
@@ -157,7 +157,7 @@ func TestVolumeCreateWithSource(t *testing.T) {
 	pool := "fake-pool"
 	volume := "fake-volume"
 	format := "qcow2"
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, nil)
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
 	source := []byte("fake-source")
 	checksum := "sha256:bb92dcbbdf410e3bd2e139fc2cb7c9ff4e490cfe3aa968779615324669e44152"
@@ -211,7 +211,7 @@ func TestVolumeUpdate(t *testing.T) {
 	unit := "bytes"
 	value := uint64(1000)
 	newValue := uint64(2000)
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{
 		{
 			Name:     volume,
 			Capacity: &libvirtxml.StorageVolumeSize{Unit: unit, Value: value},
@@ -248,7 +248,7 @@ func TestVolumeDelete(t *testing.T) {
 	pool := "fake-pool"
 	volume := "fake-volume"
 
-	f.WithPool(libvirtxml.StoragePool{Name: pool}, []*libvirtxml.StorageVolume{{Name: volume}})
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
 	a, err := action.NewVolumeAction(f, volume, pool, nil, nil)
 	if err != nil {
