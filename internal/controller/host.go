@@ -244,9 +244,9 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 
 	meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
 		Type:               ConditionTypeDataRetrieved,
-		Status:             metav1.ConditionFalse,
+		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageHostDataRetrievalSucceeded,
-		Reason:             ConditionReasonInProgress,
+		Reason:             ConditionReasonSucceeded,
 		LastTransitionTime: metav1.Time{Time: time.Now()},
 	})
 	if err := r.Status().Update(ctx, host); err != nil {
