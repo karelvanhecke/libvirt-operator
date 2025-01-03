@@ -177,6 +177,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	r.HostStore.Register(ctx, host.UID, combinedGeneration, dialer)
+	hostEntry, _ = r.HostStore.Lookup(host.UID)
 
 	if host.Labels == nil {
 		host.Labels = make(map[string]string)
