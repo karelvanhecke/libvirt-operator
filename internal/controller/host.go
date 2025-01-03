@@ -232,9 +232,14 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 		return err
 	}
 
-	host.Status.Capacity.CPU = cpu
-	host.Status.Capacity.Memory.Total = int64(memory) // #nosec #G115
-	host.Status.Capacity.Memory.Free = int64(memFree) // #nosec #G115
+	cap := &v1alpha1.HostCapacity{
+		CPU: cpu,
+		Memory: v1alpha1.HostMemory{
+			Total: int64(memory),  // #nosec #G115
+			Free:  int64(memFree), // #nosec #G115
+		},
+	}
+	host.Status.Capacity = cap
 
 	meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
 		Type:               ConditionTypeDataRetrieved,
