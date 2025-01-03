@@ -110,7 +110,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}, hostRef); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: poolRef.Spec.HostRef.Name, Namespace: ci.Namespace}, hostRef); err != nil {
 		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
 			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
 				Type:               ConditionTypeCreated,
