@@ -451,7 +451,7 @@ type CloudInitNetworkConfig struct {
 	VLANs map[string]CloudInitVLAN `json:"vlans,omitempty" yaml:"vlans,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="oldself == self",message="can not change existing cloud init data store"
+// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change existing cloud init data store"
 type CloudInitSpec struct {
 	// +kubebuilder:validation:Required
 	PoolRef ResourceRef `json:"poolRef"`

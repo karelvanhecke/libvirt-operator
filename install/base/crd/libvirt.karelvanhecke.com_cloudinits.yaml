@@ -1262,7 +1262,7 @@ spec:
             type: object
             x-kubernetes-validations:
             - message: can not change existing cloud init data store
-              rule: oldself == self
+              rule: oldSelf == self
           status:
             properties:
               conditions:

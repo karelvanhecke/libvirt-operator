@@ -43,10 +43,10 @@ type VolumeSource struct {
 }
 
 // +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
-// +kubebuilder:validation:XValidation:rule="oldself.poolRef == self.poolRef",message="can not change pool of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldself.source == self.source",message="can not change source of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldself.format == self.format",message="can not change format of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldself.backingStoreRef == self.backingStoreRef",message="can not change backing store of existing volume"
+// +kubebuilder:validation:XValidation:rule="oldSelf.poolRef == self.poolRef",message="can not change pool of existing volume"
+// +kubebuilder:validation:XValidation:rule="oldSelf.source == self.source",message="can not change source of existing volume"
+// +kubebuilder:validation:XValidation:rule="oldSelf.format == self.format",message="can not change format of existing volume"
+// +kubebuilder:validation:XValidation:rule="oldSelf.backingStoreRef == self.backingStoreRef",message="can not change backing store of existing volume"
 type VolumeSpec struct {
 	// +kubebuilder:validation:Enum=qcow2;raw
 	// +kubebuilder:validation:Required
