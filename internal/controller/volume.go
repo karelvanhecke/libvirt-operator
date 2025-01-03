@@ -44,6 +44,7 @@ const (
 	ErrVolumeIsBackingStore        = "volume can not be deleted while used as backing store"
 	ErrVolumeSourceAndBackingStore = "volume can not have a source and backing store at the same time"
 	ErrBackingStoreNotCreated      = "backing store volume has not yet been created"
+	ErrBackingStoreNotSamePool     = "backing store does not exist on the same pool"
 )
 
 // Condition messages
@@ -51,6 +52,7 @@ const (
 	ConditionMessageBackingStoreNotExist     = "Backing store volume does not exist"
 	ConditionMessageBackingStoreNotCreated   = "Backing store volume has not yet been created"
 	ConditionMessageIsBackingStore           = "Volume is currently in use as a backingstore"
+	ConditionMessageBackingStoreNotSamePool  = "Backing store volume does not exist on the same pool"
 	ConditionMessageVolumeCreationInProgress = "Volume creation in progress"
 	ConditionMessageVolumeCreationFailed     = "Volume creation failed"
 	ConditionMessageVolumeCreationSucceeded  = "Volume creation succeeded"
@@ -253,6 +255,20 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 				return err
 			}
 			return err
+		}
+
+		if backingStore.Spec.PoolRef != volume.Spec.PoolRef {
+			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessageBackingStoreNotSamePool,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, volume); err != nil {
+				return err
+			}
+			return errors.New(ErrBackingStoreNotSamePool)
 		}
 
 		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, ConditionTypeCreated) {
