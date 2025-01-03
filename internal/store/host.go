@@ -59,6 +59,10 @@ func (s *HostStore) Register(ctx context.Context, uid types.UID, generation int6
 		client:     host.New(dialer),
 	}
 
+	if err := entry.client.Connect(); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to connect host host")
+	}
+
 	go entry.startMon(ctx, uid)
 
 	s.entries[uid] = entry
