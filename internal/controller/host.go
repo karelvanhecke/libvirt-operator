@@ -20,11 +20,16 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
+	"github.com/digitalocean/go-libvirt"
 	"github.com/digitalocean/go-libvirt/socket"
 	"github.com/digitalocean/go-libvirt/socket/dialers"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +38,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	ConditionMessageHostDataRetrievalInProgress = "host data retrieval in progress"
+	ConditionMessageHostInUseByResource         = "host is in use by another resource"
+	ConditionMessageHostDataRetrievalSucceeded  = "Host data retrieval succeeded"
 )
 
 type HostReconciler struct {
@@ -45,6 +56,19 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	host := &v1alpha1.Host{}
 	if err := r.Get(ctx, req.NamespacedName, host); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if host.Status.Capacity == nil {
+		meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
+			Type:               ConditionTypeDataRetrieved,
+			Status:             metav1.ConditionFalse,
+			Message:            ConditionMessageHostDataRetrievalInProgress,
+			Reason:             ConditionReasonInProgress,
+			LastTransitionTime: metav1.Now(),
+		})
+		if err := r.Status().Update(ctx, host); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if host.DeletionTimestamp.IsZero() {
@@ -60,13 +84,31 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			volumes := &v1alpha1.VolumeList{}
-			if err := r.List(ctx, volumes, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+			pools := &v1alpha1.PoolList{}
+			if err := r.List(ctx, pools, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+				return ctrl.Result{}, err
+			}
+			networks := &v1alpha1.NetworkList{}
+			if err := r.List(ctx, networks, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+				return ctrl.Result{}, err
+			}
+			pciDevices := &v1alpha1.PCIDeviceList{}
+			if err := r.List(ctx, pciDevices, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
 				return ctrl.Result{}, err
 			}
 
-			if len(volumes.Items) > 0 {
-				return ctrl.Result{}, fmt.Errorf("can not delete host %s while in use by volumes", host.Name)
+			if len(pools.Items)+len(networks.Items)+len(pciDevices.Items) > 0 {
+				meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
+					Type:               ConditionTypeDeletionProbihibited,
+					Status:             metav1.ConditionTrue,
+					Message:            ConditionMessageHostInUseByResource,
+					Reason:             ConditionReasonInUse,
+					LastTransitionTime: metav1.Now(),
+				})
+				if err := r.Status().Update(ctx, host); err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{Requeue: true}, nil
 			}
 
 			r.HostStore.Deregister(ctx, host.UID)
@@ -92,12 +134,20 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	combinedVersion := host.ResourceVersion + "-" + authEntry.Version()
+	combinedGeneration := host.Generation + authEntry.Generation()
 
 	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if found {
-		if combinedVersion == hostEntry.Version() {
-			return ctrl.Result{}, nil
+		if combinedGeneration == hostEntry.Generation() {
+			if host.Status.Capacity != nil {
+				if d := time.Since(host.Status.Capacity.LastUpdate.Time); d < DataRefreshInterval {
+					return ctrl.Result{RequeueAfter: DataRefreshInterval - d}, nil
+				}
+			}
+			if err := r.updateHostCapacity(ctx, host, hostEntry); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: DataRefreshInterval}, nil
 		}
 	}
 
@@ -134,7 +184,8 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, fmt.Errorf("unsupported auth type: %s", auth.Spec.Type)
 	}
 
-	r.HostStore.Register(ctx, host.UID, combinedVersion, dialer)
+	r.HostStore.Register(ctx, host.UID, combinedGeneration, dialer)
+	hostEntry, _ = r.HostStore.Lookup(host.UID)
 
 	if host.Labels == nil {
 		host.Labels = make(map[string]string)
@@ -146,7 +197,11 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	return ctrl.Result{}, nil
+	if err := r.updateHostCapacity(ctx, host, hostEntry); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{RequeueAfter: DataRefreshInterval}, nil
 }
 
 func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -171,4 +226,54 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}
 			return queued
 		})).Complete(r)
+}
+
+func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.Host, hostEntry *store.HostEntry) error {
+	hClient, end := hostEntry.Session()
+	defer end()
+
+	_, _, cpu, _, _, _, _, _, err := hClient.NodeGetInfo()
+	if err != nil {
+		return err
+	}
+
+	memory := v1alpha1.HostMemory{}
+
+	memStats, _, err := hClient.NodeGetMemoryStats(4, int32(libvirt.NodeMemoryStatsAllCells), 0)
+	if err != nil {
+		return err
+	}
+
+	for _, memStat := range memStats {
+		switch memStat.Field {
+		case libvirt.NodeMemoryStatsTotal:
+			memory.Total = int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsFree:
+			memory.Free = int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsBuffers:
+			memory.Free += int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsCached:
+			memory.Free += int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		}
+	}
+
+	cap := &v1alpha1.HostCapacity{
+		CPU:        cpu,
+		Memory:     memory,
+		LastUpdate: metav1.Now(),
+	}
+	host.Status.Capacity = cap
+
+	meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
+		Type:               ConditionTypeDataRetrieved,
+		Status:             metav1.ConditionTrue,
+		Message:            ConditionMessageHostDataRetrievalSucceeded,
+		Reason:             ConditionReasonSucceeded,
+		LastTransitionTime: metav1.Now(),
+	})
+	if err := r.Status().Update(ctx, host); err != nil {
+		return err
+	}
+
+	return r.Status().Update(ctx, host)
 }

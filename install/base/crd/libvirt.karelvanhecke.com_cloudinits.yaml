@@ -37,14 +37,6 @@ spec:
             type: object
           spec:
             properties:
-              hostRef:
-                properties:
-                  name:
-                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
-                    type: string
-                required:
-                - name
-                type: object
               metadata:
                 properties:
                   instanceID:
@@ -555,8 +547,14 @@ spec:
                       type: object
                     type: object
                 type: object
-              pool:
-                type: string
+              poolRef:
+                properties:
+                  name:
+                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                    type: string
+                required:
+                - name
+                type: object
               userData:
                 properties:
                   bootcmd:
@@ -1260,8 +1258,11 @@ spec:
                     type: array
                 type: object
             required:
-            - hostRef
+            - poolRef
             type: object
+            x-kubernetes-validations:
+            - message: can not change existing cloud init data store
+              rule: oldSelf == self
           status:
             properties:
               conditions:
@@ -1320,6 +1321,19 @@ spec:
                   - type
                   type: object
                 type: array
+              identifier:
+                properties:
+                  key:
+                    type: string
+                  name:
+                    type: string
+                  pool:
+                    type: string
+                required:
+                - key
+                - name
+                - pool
+                type: object
             type: object
         type: object
     served: true

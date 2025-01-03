@@ -47,13 +47,19 @@ type AuthSpec struct {
 	Username *string `json:"username,omitempty"`
 }
 
+// +kubebuilder:validation:Optional
+type AuthStatus struct {
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type Auth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec AuthSpec `json:"spec,omitempty"`
+	Spec   AuthSpec   `json:"spec,omitempty"`
+	Status AuthStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

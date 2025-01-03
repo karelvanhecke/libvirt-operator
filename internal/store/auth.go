@@ -36,8 +36,8 @@ type File struct {
 }
 
 type AuthEntry struct {
-	path    string
-	version string
+	path       string
+	generation int64
 }
 
 type AuthStore struct {
@@ -56,7 +56,7 @@ func NewFile(name string, data []byte) *File {
 	}
 }
 
-func (s *AuthStore) Register(ctx context.Context, uid types.UID, version string, files []*File) error {
+func (s *AuthStore) Register(ctx context.Context, uid types.UID, generation int64, files []*File) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (s *AuthStore) Register(ctx context.Context, uid types.UID, version string,
 	}
 
 	entry := &AuthEntry{
-		version: version,
+		generation: generation,
 	}
 
 	if !found {
@@ -148,6 +148,6 @@ func (e *AuthEntry) GetPath() string {
 	return e.path
 }
 
-func (e *AuthEntry) Version() string {
-	return e.version
+func (e *AuthEntry) Generation() int64 {
+	return e.generation
 }

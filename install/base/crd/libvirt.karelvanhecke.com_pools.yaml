@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.0
-  name: volumes.libvirt.karelvanhecke.com
+  name: pools.libvirt.karelvanhecke.com
 spec:
   group: libvirt.karelvanhecke.com
   names:
-    kind: Volume
-    listKind: VolumeList
-    plural: volumes
-    singular: volume
+    kind: Pool
+    listKind: PoolList
+    plural: pools
+    singular: pool
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -37,7 +37,7 @@ spec:
             type: object
           spec:
             properties:
-              backingStoreRef:
+              hostRef:
                 properties:
                   name:
                     pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
@@ -45,89 +45,40 @@ spec:
                 required:
                 - name
                 type: object
-                x-kubernetes-validations:
-                - message: can not change backing store of existing volume
-                  rule: oldSelf == self
-              format:
-                enum:
-                - qcow2
-                - raw
+              name:
                 type: string
-                x-kubernetes-validations:
-                - message: can not change format of existing volume
-                  rule: oldSelf == self
-              poolRef:
-                properties:
-                  name:
-                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
-                    type: string
-                required:
-                - name
-                type: object
-                x-kubernetes-validations:
-                - message: can not change pool of existing volume
-                  rule: oldSelf == self
-              size:
-                properties:
-                  unit:
-                    enum:
-                    - bytes
-                    - B
-                    - KB
-                    - K
-                    - KiB
-                    - MB
-                    - M
-                    - MiB
-                    - GB
-                    - G
-                    - GiB
-                    - TB
-                    - T
-                    - TiB
-                    - PB
-                    - P
-                    - PiB
-                    - EB
-                    - E
-                    - EiB
-                    type: string
-                  value:
-                    format: int64
-                    minimum: 1
-                    type: integer
-                required:
-                - value
-                type: object
-              source:
-                properties:
-                  checksum:
-                    type: string
-                    x-kubernetes-validations:
-                    - message: must be a valid SHA256 or SHA512 checksum
-                      rule: self.matches("^sha256:[a-fA-F0-9]{64}|sha512:[a-fA-F0-9]{128}$")
-                  url:
-                    type: string
-                    x-kubernetes-validations:
-                    - message: must be a valid http(s) url
-                      rule: url(self).getScheme() == 'https' || url(self).getScheme()
-                        == 'http'
-                required:
-                - url
-                type: object
-                x-kubernetes-validations:
-                - message: can not change source of existing volume
-                  rule: oldSelf == self
+              uuid:
+                type: string
             required:
-            - format
-            - poolRef
-            - size
+            - hostRef
             type: object
             x-kubernetes-validations:
-            - message: source and backingstore can not be defined at the same time
-              rule: 'has(self.source) ? !has(self.backingStoreRef) : true'
+            - message: at least the name or uuid need to be provided
+              rule: '!has(self.name) ? has(self.uuid) : true'
           status:
             properties:
+              active:
+                type: boolean
+              capacity:
+                properties:
+                  allocation:
+                    format: int64
+                    type: integer
+                  available:
+                    format: int64
+                    type: integer
+                  capacity:
+                    format: int64
+                    type: integer
+                  lastUpdate:
+                    format: date-time
+                    type: string
+                required:
+                - allocation
+                - available
+                - capacity
+                - lastUpdate
+                type: object
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
@@ -186,16 +137,13 @@ spec:
                 type: array
               identifier:
                 properties:
-                  key:
-                    type: string
                   name:
                     type: string
-                  pool:
+                  uuid:
                     type: string
                 required:
-                - key
                 - name
-                - pool
+                - uuid
                 type: object
             type: object
         type: object

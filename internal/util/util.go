@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package utils
+package util
 
 func ConvertToBytes(value uint64, unit string) uint64 {
 	const B = 1
