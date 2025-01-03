@@ -52,9 +52,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	retrievalStatus := meta.FindStatusCondition(pool.Status.Conditions, ConditionTypeDataRetrieved)
-
-	if retrievalStatus == nil {
+	if pool.Status.Capacity == nil {
 		meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
 			Type:               ConditionTypeDataRetrieved,
 			Status:             metav1.ConditionFalse,
@@ -105,7 +103,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	if retrievalStatus.Status == metav1.ConditionTrue {
+	if pool.Status.Capacity != nil {
 		if d := time.Since(pool.Status.Capacity.LastUpdate.Time); d < 1*time.Minute {
 			return ctrl.Result{RequeueAfter: 1*time.Minute - d}, nil
 		}
@@ -190,15 +188,6 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		LastUpdate: metav1.Now(),
 	}
 
-	if pool.Labels == nil {
-		pool.Labels = map[string]string{LabelKeyHost: pool.Spec.HostRef.Name}
-	} else {
-		pool.Labels[LabelKeyHost] = pool.Spec.HostRef.Name
-	}
-	if err := r.Update(ctx, pool); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
 		Type:               ConditionTypeDataRetrieved,
 		Status:             metav1.ConditionTrue,
@@ -207,6 +196,15 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, pool); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if pool.Labels == nil {
+		pool.Labels = map[string]string{LabelKeyHost: pool.Spec.HostRef.Name}
+	} else {
+		pool.Labels[LabelKeyHost] = pool.Spec.HostRef.Name
+	}
+	if err := r.Update(ctx, pool); err != nil {
 		return ctrl.Result{}, err
 	}
 

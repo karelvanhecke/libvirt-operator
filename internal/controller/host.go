@@ -58,9 +58,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	retrievalStatus := meta.FindStatusCondition(host.Status.Conditions, ConditionTypeDataRetrieved)
-
-	if retrievalStatus == nil {
+	if host.Status.Capacity == nil {
 		meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
 			Type:               ConditionTypeDataRetrieved,
 			Status:             metav1.ConditionFalse,
@@ -133,7 +131,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if found {
 		if combinedGeneration == hostEntry.Generation() {
-			if retrievalStatus.Status == metav1.ConditionTrue {
+			if host.Status.Capacity != nil {
 				if d := time.Since(host.Status.Capacity.LastUpdate.Time); d < 1*time.Minute {
 					return ctrl.Result{RequeueAfter: 1*time.Minute - d}, nil
 				}

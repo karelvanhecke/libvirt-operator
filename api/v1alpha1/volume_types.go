@@ -43,11 +43,8 @@ type VolumeSource struct {
 }
 
 // +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
-// +kubebuilder:validation:XValidation:rule="oldSelf.poolRef == self.poolRef",message="can not change pool of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldSelf.source == self.source",message="can not change source of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldSelf.format == self.format",message="can not change format of existing volume"
-// +kubebuilder:validation:XValidation:rule="oldSelf.backingStoreRef == self.backingStoreRef",message="can not change backing store of existing volume"
 type VolumeSpec struct {
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change format of existing volume"
 	// +kubebuilder:validation:Enum=qcow2;raw
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
@@ -55,12 +52,15 @@ type VolumeSpec struct {
 	// +kubebuilder:validation:Required
 	Size VolumeSize `json:"size,omitempty"`
 
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change pool of existing volume"
 	// +kubebuilder:validation:Required
 	PoolRef ResourceRef `json:"poolRef"`
 
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change source of existing volume"
 	// +kubebuilder:validation:Optional
 	Source *VolumeSource `json:"source,omitempty"`
 
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change backing store of existing volume"
 	// +kubebuilder:validation:Optional
 	BackingStoreRef *ResourceRef `json:"backingStoreRef,omitempty"`
 }

@@ -30,7 +30,6 @@ const (
 
 // +kubebuilder:validation:XValidation:rule="self.type == \"SSH\" ? has(self.username) && (has(self.knownHosts) || (has(self.verify) && !self.verify)) && !has(self.ca) : true",message="type SSH requires username and knownHosts (unless verify is disabled) to be set"
 // +kubebuilder:validation:XValidation:rule="self.type == \"TLS\" ? has(self.ca) || (has(self.verify) && !self.verify) && !has(self.username) && !has(self.knownHosts) : true",message="type TLS requires ca (unless verify is disabled) to be set"
-// +kubebuilder:validation:XValidation:rule="oldSelf.type == self.type",message="can not change type of existing auth config"
 type AuthSpec struct {
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="type is immutable"
 	// +kubebuilder:validation:Required

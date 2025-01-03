@@ -73,8 +73,6 @@ spec:
             - message: type TLS requires ca (unless verify is disabled) to be set
               rule: 'self.type == "TLS" ? has(self.ca) || (has(self.verify) && !self.verify)
                 && !has(self.username) && !has(self.knownHosts) : true'
-            - message: can not change type of existing auth config
-              rule: oldSelf.type == self.type
           status:
             properties:
               conditions:
