@@ -70,10 +70,14 @@ spec:
                   capacity:
                     format: int64
                     type: integer
+                  lastUpdate:
+                    format: date-time
+                    type: string
                 required:
                 - allocation
                 - available
                 - capacity
+                - lastUpdate
                 type: object
               conditions:
                 items:
