@@ -20,7 +20,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
@@ -37,9 +36,9 @@ func TestAuthStore(t *testing.T) {
 
 	var entry *store.AuthEntry
 	for i := range 2 {
-		ver := strconv.Itoa(i)
+		gen := int64(i)
 
-		fileContent := "fake-content-" + ver
+		fileContent := "fake-content"
 		files := []*store.File{store.NewFile(fileName, []byte(fileContent))}
 
 		oldPath := ""
@@ -53,7 +52,7 @@ func TestAuthStore(t *testing.T) {
 			oldDir = p
 		}
 
-		if err := s.Register(ctx, uid, ver, files); err != nil {
+		if err := s.Register(ctx, uid, gen, files); err != nil {
 			t.Fail()
 		}
 
@@ -61,7 +60,7 @@ func TestAuthStore(t *testing.T) {
 		if !ok {
 			t.Fail()
 		}
-		if e.Version() != ver {
+		if e.Generation() != gen {
 			t.Fail()
 		}
 		entry = e

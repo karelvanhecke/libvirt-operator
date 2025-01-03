@@ -48,6 +48,8 @@ type Client interface {
 	NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error)
 	NodeDeviceIsActive(Name string) (rActive int32, err error)
 	NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err error)
+	NodeGetFreeMemory() (rFreeMem uint64, err error)
+	NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error)
 	StoragePoolGetInfo(Pool libvirt.StoragePool) (rState uint8, rCapacity uint64, rAllocation uint64, rAvailable uint64, err error)
 	StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error)
 	StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err error)

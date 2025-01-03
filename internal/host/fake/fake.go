@@ -39,7 +39,14 @@ const (
 	ErrNodedevNotExist      = "Node device does not exist"
 )
 
+type Memory struct {
+	Total int64
+	Free  int64
+}
+
 type Fake struct {
+	cpu            int64
+	memory         Memory
 	connectFail    bool
 	disconnectFail bool
 	disconnected   chan struct{}
@@ -472,4 +479,19 @@ func (f *Fake) NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err
 	}
 
 	return libvirt.NodeDevice{Name: d.xml.Name}, nil
+}
+
+func (f *Fake) WithCapacity(cpu int64, memory Memory) {
+	f.cpu = cpu
+	f.memory = memory
+}
+
+func (f *Fake) NodeGetFreeMemory() (rFreeMem uint64, err error) {
+	// #nosec #G115
+	return uint64(f.memory.Free), nil
+}
+
+func (f *Fake) NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error) {
+	// #nosec #G115
+	return [32]int8{}, uint64(f.memory.Total), int32(f.cpu), 0, 0, 0, 0, 0, nil
 }

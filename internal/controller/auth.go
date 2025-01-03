@@ -19,10 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	ConditionMessageAuthInUseByHost = "auth is currently in use by host"
 )
 
 type AuthReconciler struct {
@@ -66,6 +73,16 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			if len(hosts.Items) > 0 {
+				meta.SetStatusCondition(&auth.Status.Conditions, metav1.Condition{
+					Type:               ConditionTypeDeletionProbihibited,
+					Status:             metav1.ConditionTrue,
+					Message:            ConditionMessageAuthInUseByHost,
+					Reason:             ConditionReasonInUse,
+					LastTransitionTime: metav1.Time{Time: time.Now()},
+				})
+				if err := r.Status().Update(ctx, auth); err != nil {
+					return ctrl.Result{}, err
+				}
 				return ctrl.Result{}, fmt.Errorf("can not delete auth %s while in use by hosts", auth.Name)
 			}
 
@@ -84,10 +101,10 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	combinedVersion := auth.ResourceVersion + "-" + secret.ResourceVersion
+	combinedGeneration := auth.Generation + secret.Generation
 
 	if found {
-		if combinedVersion == entry.Version() {
+		if combinedGeneration == entry.Generation() {
 			return ctrl.Result{}, nil
 		}
 	}
@@ -119,7 +136,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, fmt.Errorf("unsupported auth type: %s", auth.Spec.Type)
 	}
 
-	if err := r.AuthStore.Register(ctx, auth.UID, combinedVersion, files); err != nil {
+	if err := r.AuthStore.Register(ctx, auth.UID, combinedGeneration, files); err != nil {
 		return ctrl.Result{}, err
 	}
 
