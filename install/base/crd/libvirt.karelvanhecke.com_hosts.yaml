@@ -47,18 +47,6 @@ spec:
                 required:
                 - name
                 type: object
-              pools:
-                items:
-                  properties:
-                    default:
-                      type: boolean
-                    name:
-                      type: string
-                  required:
-                  - name
-                  type: object
-                minItems: 1
-                type: array
               port:
                 format: int32
                 maximum: 65535
@@ -67,7 +55,6 @@ spec:
             required:
             - address
             - authRef
-            - pools
             type: object
         type: object
     served: true

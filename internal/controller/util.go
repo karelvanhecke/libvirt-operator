@@ -17,30 +17,16 @@ limitations under the License.
 package controller
 
 import (
-	"slices"
-
+	"github.com/digitalocean/go-libvirt"
+	"github.com/google/uuid"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 )
 
-func poolAvailable(pools []v1alpha1.Pool, preferredPool *string) (string, bool) {
-	var pool string
-	if p := preferredPool; p != nil {
-		if i := slices.IndexFunc(pools, func(hp v1alpha1.Pool) bool { return hp.Name == *p }); i != -1 {
-			pool = *p
-		} else {
-			return "", false
-		}
-	} else {
-		if i := slices.IndexFunc(pools, func(hp v1alpha1.Pool) bool {
-			if hp.Default != nil {
-				return *hp.Default
-			}
-			return false
-		}); i != -1 {
-			pool = pools[i].Name
-		} else {
-			pool = pools[0].Name
-		}
+func resolvePoolIdentifier(id *v1alpha1.LibvirtIdentifierWithUUID) (libvirt.StoragePool, error) {
+	u, err := uuid.Parse(id.UUID)
+	if err != nil {
+		return libvirt.StoragePool{}, err
 	}
-	return pool, true
+
+	return libvirt.StoragePool{Name: id.Name, UUID: libvirt.UUID(u)}, nil
 }

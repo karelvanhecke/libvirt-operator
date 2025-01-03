@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/google/uuid"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -206,7 +207,7 @@ func (f *Fake) StorageVolDelete(vol libvirt.StorageVol, flags libvirt.StorageVol
 func (f *Fake) getPoolByName(name string) (*Pool, error) {
 	i := slices.IndexFunc(f.pools, func(pool *Pool) bool { return pool.xml.Name == name })
 	if i == -1 {
-		return nil, errors.New(ErrPoolNotExist)
+		return nil, libvirt.Error{Code: uint32(libvirt.ErrNoStoragePool), Message: ErrPoolNotExist}
 	}
 	return f.pools[i], nil
 }
@@ -415,4 +416,60 @@ func (f *Fake) StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err
 		return -1, err
 	}
 	return p.state, nil
+}
+
+func (f *Fake) StoragePoolGetInfo(Pool libvirt.StoragePool) (rState uint8, rCapacity uint64, rAllocation uint64, rAvailable uint64, err error) {
+	p, err := f.getPoolByName(Pool.Name)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	// #nosec #G115
+	return uint8(p.state), p.xml.Capacity.Value, p.xml.Allocation.Value, p.xml.Available.Value, nil
+}
+
+func (f *Fake) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
+	n, err := f.getNetworkByName(Name)
+	if err != nil {
+		return libvirt.Network{}, err
+	}
+
+	return libvirt.Network{Name: n.xml.Name}, nil
+}
+func (f *Fake) NetworkLookupByUUID(UUID libvirt.UUID) (rNet libvirt.Network, err error) {
+	u, err := uuid.FromBytes(UUID[:])
+	if err != nil {
+		return libvirt.Network{}, err
+	}
+
+	i := slices.IndexFunc(f.networks, func(n *Network) bool { return n.xml.UUID == u.String() })
+	if i == -1 {
+		return libvirt.Network{}, libvirt.Error{Code: uint32(libvirt.ErrNoNetwork), Message: ErrNetworkNotExist}
+	}
+
+	n := f.networks[i]
+	return libvirt.Network{Name: n.xml.Name, UUID: UUID}, nil
+}
+
+func (f *Fake) StoragePoolLookupByUUID(UUID libvirt.UUID) (rPool libvirt.StoragePool, err error) {
+	u, err := uuid.FromBytes(UUID[:])
+	if err != nil {
+		return libvirt.StoragePool{}, err
+	}
+
+	i := slices.IndexFunc(f.pools, func(n *Pool) bool { return n.xml.UUID == u.String() })
+	if i == -1 {
+		return libvirt.StoragePool{}, libvirt.Error{Code: uint32(libvirt.ErrNoStoragePool), Message: ErrPoolNotExist}
+	}
+
+	p := f.pools[i]
+	return libvirt.StoragePool{Name: p.xml.Name, UUID: UUID}, nil
+}
+
+func (f *Fake) NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err error) {
+	d, err := f.getNodeDeviceByName(Name)
+	if err != nil {
+		return libvirt.NodeDevice{}, err
+	}
+
+	return libvirt.NodeDevice{Name: d.xml.Name}, nil
 }

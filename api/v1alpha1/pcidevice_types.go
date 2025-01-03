@@ -20,34 +20,37 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HostSpec struct {
+type PCIDeviceSpec struct {
 	// +kubebuilder:validation:Required
-	Address string `json:"address"`
+	Name string `json:"name"`
 	// +kubebuilder:validation:Required
-	AuthRef ResourceRef `json:"authRef"`
+	HostRef ResourceRef `json:"hostRef"`
+}
 
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=65535
-	// +kubebuilder:validation:Optional
-	Port *int32 `json:"port,omitempty"`
+// +kubebuilder:validation:Optional
+type PCIDeviceStatus struct {
+	Identifier *LibvirtIdentifier `json:"identifier,omitempty"`
+	Active     *bool              `json:"active,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type Host struct {
+// +kubebuilder:subresource:status
+type PCIDevice struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec HostSpec `json:"spec,omitempty"`
+	Spec   PCIDeviceSpec   `json:"spec,omitempty"`
+	Status PCIDeviceStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type HostList struct {
+type PCIDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Host `json:"items"`
+	Items []PCIDevice `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Host{}, &HostList{})
+	SchemeBuilder.Register(&PCIDevice{}, &PCIDeviceList{})
 }

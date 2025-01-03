@@ -20,34 +20,44 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HostSpec struct {
-	// +kubebuilder:validation:Required
-	Address string `json:"address"`
-	// +kubebuilder:validation:Required
-	AuthRef ResourceRef `json:"authRef"`
+type PoolSpec struct {
+	LibvirtLookup `json:",inline"`
+}
 
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=65535
-	// +kubebuilder:validation:Optional
-	Port *int32 `json:"port,omitempty"`
+type PoolCapacity struct {
+	// +kubebuilder:validation:Required
+	Capacity int64 `json:"capacity"`
+	// +kubebuilder:validation:Required
+	Allocation int64 `json:"allocation"`
+	// +kubebuilder:validation:Required
+	Available int64 `json:"available"`
+}
+
+// +kubebuilder:validation:Optional
+type PoolStatus struct {
+	Identifier *LibvirtIdentifierWithUUID `json:"identifier,omitempty"`
+	Active     *bool                      `json:"active,omitempty"`
+	Capacity   *PoolCapacity              `json:"capacity,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type Host struct {
+// +kubebuilder:subresource:status
+type Pool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec HostSpec `json:"spec,omitempty"`
+	Spec   PoolSpec   `json:"spec,omitempty"`
+	Status PoolStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type HostList struct {
+type PoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Host `json:"items"`
+	Items []Pool `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Host{}, &HostList{})
+	SchemeBuilder.Register(&Pool{}, &PoolList{})
 }

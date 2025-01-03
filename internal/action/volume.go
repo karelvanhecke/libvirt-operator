@@ -45,16 +45,11 @@ type VolumeAction struct {
 	source       *os.File
 }
 
-func NewVolumeAction(client host.Client, name string, pool string, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
-	p, err := client.StoragePoolLookupByName(pool)
-	if err != nil {
-		return nil, err
-	}
-
+func NewVolumeAction(client host.Client, name string, pool libvirt.StoragePool, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
 	a := &VolumeAction{
 		Client: client,
 		name:   name,
-		pool:   p,
+		pool:   pool,
 		size:   size,
 		format: format,
 	}

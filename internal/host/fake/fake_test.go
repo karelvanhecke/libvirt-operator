@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/google/uuid"
 	"github.com/karelvanhecke/libvirt-operator/internal/host/fake"
 	"libvirt.org/go/libvirtxml"
 )
@@ -656,6 +657,98 @@ func TestStoragePoolIsActive(t *testing.T) {
 		t.Fail()
 	}
 	if active != 1 {
+		t.Fail()
+	}
+}
+
+func TestStoragePoolGetInfo(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-pool"
+	f.WithPool(&libvirtxml.StoragePool{Name: name,
+		Capacity:   &libvirtxml.StoragePoolSize{Unit: "bytes", Value: 2},
+		Allocation: &libvirtxml.StoragePoolSize{Unit: "bytes", Value: 1},
+		Available:  &libvirtxml.StoragePoolSize{Unit: "bytes", Value: 1}},
+		int32(libvirt.StoragePoolRunning), nil)
+
+	state, cap, alloc, avail, err := f.StoragePoolGetInfo(libvirt.StoragePool{Name: name})
+	if err != nil {
+		t.Fail()
+	}
+	if state != uint8(libvirt.StoragePoolRunning) {
+		t.Fail()
+	}
+	if cap-alloc != avail {
+		t.Fail()
+	}
+}
+
+func TestNetworkLookupByName(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-network"
+	f.WithNetwork(&libvirtxml.Network{Name: name}, 0)
+
+	n, err := f.NetworkLookupByName(name)
+	if err != nil {
+		t.Fail()
+	}
+	if n.Name != name {
+		t.Fail()
+	}
+}
+
+func TestNetworkLookupByUUID(t *testing.T) {
+	f := fake.New()
+
+	u, err := uuid.NewRandom()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.WithNetwork(&libvirtxml.Network{UUID: u.String()}, 0)
+
+	n, err := f.NetworkLookupByUUID(libvirt.UUID(u))
+	if err != nil {
+		t.Fail()
+	}
+
+	if n.UUID != libvirt.UUID(u) {
+		t.Fail()
+	}
+}
+
+func TestStoragePoolLookupByUUID(t *testing.T) {
+	f := fake.New()
+
+	u, err := uuid.NewRandom()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.WithPool(&libvirtxml.StoragePool{UUID: u.String()}, 0, nil)
+
+	p, err := f.StoragePoolLookupByUUID(libvirt.UUID(u))
+	if err != nil {
+		t.Fail()
+	}
+
+	if p.UUID != libvirt.UUID(u) {
+		t.Fail()
+	}
+}
+
+func TestNodeDeviceLookupByName(t *testing.T) {
+	f := fake.New()
+
+	name := "fake-nodedev"
+	f.WithNodeDev(&libvirtxml.NodeDevice{Name: name}, 0)
+
+	n, err := f.NodeDeviceLookupByName(name)
+	if err != nil {
+		t.Fail()
+	}
+	if n.Name != name {
 		t.Fail()
 	}
 }

@@ -20,34 +20,34 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HostSpec struct {
-	// +kubebuilder:validation:Required
-	Address string `json:"address"`
-	// +kubebuilder:validation:Required
-	AuthRef ResourceRef `json:"authRef"`
+type NetworkSpec struct {
+	LibvirtLookup `json:",inline"`
+}
 
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=65535
-	// +kubebuilder:validation:Optional
-	Port *int32 `json:"port,omitempty"`
+// +kubebuilder:validation:Optional
+type NetworkStatus struct {
+	Identifier *LibvirtIdentifierWithUUID `json:"identifier,omitempty"`
+	Active     *bool                      `json:"active,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type Host struct {
+// +kubebuilder:subresource:status
+type Network struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec HostSpec `json:"spec,omitempty"`
+	Spec   NetworkSpec   `json:"spec,omitempty"`
+	Status NetworkStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type HostList struct {
+type NetworkList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Host `json:"items"`
+	Items []Network `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Host{}, &HostList{})
+	SchemeBuilder.Register(&Network{}, &NetworkList{})
 }

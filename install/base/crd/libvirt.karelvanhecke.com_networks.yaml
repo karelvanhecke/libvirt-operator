@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.0
-  name: auths.libvirt.karelvanhecke.com
+  name: networks.libvirt.karelvanhecke.com
 spec:
   group: libvirt.karelvanhecke.com
   names:
-    kind: Auth
-    listKind: AuthList
-    plural: auths
-    singular: auth
+    kind: Network
+    listKind: NetworkList
+    plural: networks
+    singular: network
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -37,11 +37,7 @@ spec:
             type: object
           spec:
             properties:
-              ca:
-                type: string
-              knownHosts:
-                type: string
-              secretRef:
+              hostRef:
                 properties:
                   name:
                     pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
@@ -49,32 +45,31 @@ spec:
                 required:
                 - name
                 type: object
-              type:
-                enum:
-                - TLS
-                - SSH
+              name:
                 type: string
-                x-kubernetes-validations:
-                - message: type is immutable
-                  rule: oldSelf == self
-              username:
+              uuid:
                 type: string
-              verify:
-                type: boolean
             required:
-            - secretRef
-            - type
+            - hostRef
             type: object
             x-kubernetes-validations:
-            - message: type SSH requires username and knownHosts (unless verify is
-                disabled) to be set
-              rule: 'self.type == "SSH" ? has(self.username) && (has(self.knownHosts)
-                || (has(self.verify) && !self.verify)) && !has(self.ca) : true'
-            - message: type TLS requires ca (unless verify is disabled) to be set
-              rule: 'self.type == "TLS" ? has(self.ca) || (has(self.verify) && !self.verify)
-                && !has(self.username) && !has(self.knownHosts) : true'
-            - message: can not change type of existing auth config
-              rule: oldself.type == self.type
+            - message: at least the name or uuid need to be provided
+              rule: '!has(self.name) ? has(self.uuid) : true'
+          status:
+            properties:
+              active:
+                type: boolean
+              identifier:
+                properties:
+                  name:
+                    type: string
+                  uuid:
+                    type: string
+                required:
+                - name
+                - uuid
+                type: object
+            type: object
         type: object
     served: true
     storage: true

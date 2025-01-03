@@ -26,6 +26,7 @@ const (
 	LabelKeySecret = "libvirt.karelvanhecke.com/secret"
 	LabelKeyAuth   = "libvirt.karelvanhecke.com/auth"
 	LabelKeyHost   = "libvirt.karelvanhecke.com/host"
+	LabelKeyPool   = "libvirt.karelvanhecke.com/pool"
 )
 
 // Condition types
@@ -45,9 +46,10 @@ const (
 
 // Condition messages
 const (
-	ConditionMessageHostNotFound     = "Host not found"
-	ConditionMessageWaitingForHost   = "Waiting for host to become available"
-	ConditionMessagePoolNotAvailable = "Pool is not available"
+	ConditionMessageHostNotFound   = "Host not found"
+	ConditionMessageWaitingForHost = "Waiting for host to become available"
+	ConditionMessagePoolNotFound   = "Pool not found"
+	ConditionMessageWaitingForPool = "Waiting for pool to become available"
 )
 
 // Auth file names

@@ -34,7 +34,7 @@ func TestVolumeExists(t *testing.T) {
 	volume := "fake-volume"
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
-	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
 	if err != nil {
 		t.Fatal()
 	}
@@ -49,7 +49,7 @@ func TestVolumeNotExists(t *testing.T) {
 	pool := "fake-pool"
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
-	a, err := action.NewVolumeAction(f, "fake-volume", pool, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
+	a, err := action.NewVolumeAction(f, "fake-volume", libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
 	if err != nil {
 		t.Fatal()
 	}
@@ -68,7 +68,7 @@ func TestVolumeCreate(t *testing.T) {
 	value := uint64(1000)
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
-	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{Unit: unit, Value: value}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{Unit: unit, Value: value}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
 	if err != nil {
 		t.Fatal()
 	}
@@ -120,7 +120,7 @@ func TestVolumeCreateWithBackingStore(t *testing.T) {
 		},
 	})
 
-	a, err := action.NewVolumeAction(f, volume, pool, nil, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, nil, &libvirtxml.StorageVolumeTargetFormat{Type: format})
 	if err != nil {
 		t.Fatal()
 	}
@@ -173,7 +173,7 @@ func TestVolumeCreateWithSource(t *testing.T) {
 	)
 	defer server.Close()
 
-	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
 	if err != nil {
 		t.Fatal()
 	}
@@ -218,7 +218,7 @@ func TestVolumeUpdate(t *testing.T) {
 		},
 	})
 
-	a, err := action.NewVolumeAction(f, volume, pool, &libvirtxml.StorageVolumeSize{Unit: unit, Value: newValue}, nil)
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{Unit: unit, Value: newValue}, nil)
 	if err != nil {
 		t.Fatal()
 	}
@@ -250,7 +250,7 @@ func TestVolumeDelete(t *testing.T) {
 
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
-	a, err := action.NewVolumeAction(f, volume, pool, nil, nil)
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, nil, nil)
 	if err != nil {
 		t.Fatal()
 	}
