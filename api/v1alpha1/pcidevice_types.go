@@ -31,6 +31,7 @@ type PCIDeviceSpec struct {
 type PCIDeviceStatus struct {
 	Identifier *LibvirtIdentifier `json:"identifier,omitempty"`
 	Active     *bool              `json:"active,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 // +kubebuilder:object:root=true

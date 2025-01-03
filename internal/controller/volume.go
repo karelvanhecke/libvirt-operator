@@ -47,11 +47,6 @@ const (
 	ErrBackingStoreNotCreated      = "backing store volume has not yet been created"
 )
 
-// Condition reasons
-const (
-	ConditionReasonIsBackingStore = "IsBackingStore"
-)
-
 // Condition messages
 const (
 	ConditionMessageBackingStoreNotExist     = "Backing store volume does not exist"
@@ -227,7 +222,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 			Type:               ConditionTypeDeletionProbihibited,
 			Status:             metav1.ConditionTrue,
 			Message:            ConditionMessageIsBackingStore,
-			Reason:             ConditionReasonIsBackingStore,
+			Reason:             ConditionReasonInUse,
 			LastTransitionTime: metav1.Time{Time: time.Now()},
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {

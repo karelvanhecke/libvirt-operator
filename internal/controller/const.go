@@ -34,6 +34,7 @@ const (
 const (
 	ConditionTypeCreated              = "Created"
 	ConditionTypeDeletionProbihibited = "DeletionProhibited"
+	ConditionTypeDataRetrieved        = "DataRetrieved"
 )
 
 // Condition reasons
@@ -42,6 +43,7 @@ const (
 	ConditionReasonInProgress = "InProgress"
 	ConditionReasonFailed     = "Failed"
 	ConditionReasonSucceeded  = "Succeeded"
+	ConditionReasonInUse      = "InUse"
 )
 
 // Condition messages
