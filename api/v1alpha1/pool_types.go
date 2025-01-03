@@ -31,6 +31,8 @@ type PoolCapacity struct {
 	Allocation int64 `json:"allocation"`
 	// +kubebuilder:validation:Required
 	Available int64 `json:"available"`
+	// +kubebuilder:validation:Required
+	LastUpdate metav1.Time `json:"lastUpdate"`
 }
 
 // +kubebuilder:validation:Optional

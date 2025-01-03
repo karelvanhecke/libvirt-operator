@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
@@ -78,7 +77,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					Status:             metav1.ConditionTrue,
 					Message:            ConditionMessageAuthInUseByHost,
 					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Time{Time: time.Now()},
+					LastTransitionTime: metav1.Now(),
 				})
 				if err := r.Status().Update(ctx, auth); err != nil {
 					return ctrl.Result{}, err

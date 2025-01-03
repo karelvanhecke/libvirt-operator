@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/action"
@@ -75,7 +74,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageVolumeCreationInProgress,
 			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return ctrl.Result{}, err
@@ -90,7 +89,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessagePoolNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -106,7 +105,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForPool,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -128,7 +127,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageHostNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -145,7 +144,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForHost,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -223,7 +222,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 			Status:             metav1.ConditionTrue,
 			Message:            ConditionMessageIsBackingStore,
 			Reason:             ConditionReasonInUse,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return err
@@ -248,7 +247,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageBackingStoreNotExist,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return err
@@ -262,7 +261,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageBackingStoreNotCreated,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return err
@@ -297,7 +296,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageVolumeCreationFailed,
 			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return err
@@ -309,7 +308,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageVolumeCreationSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	return r.Status().Update(ctx, volume)
 }

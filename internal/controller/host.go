@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/digitalocean/go-libvirt"
 	"github.com/digitalocean/go-libvirt/socket"
 	"github.com/digitalocean/go-libvirt/socket/dialers"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
@@ -65,7 +66,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageHostDataRetrievalInProgress,
 			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, host); err != nil {
 			return ctrl.Result{}, err
@@ -96,7 +97,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					Status:             metav1.ConditionTrue,
 					Message:            ConditionMessageHostInUseByResource,
 					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Time{Time: time.Now()},
+					LastTransitionTime: metav1.Now(),
 				})
 				if err := r.Status().Update(ctx, host); err != nil {
 					return ctrl.Result{}, err
@@ -133,8 +134,8 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if found {
 		if combinedGeneration == hostEntry.Generation() {
 			if retrievalStatus.Status == metav1.ConditionTrue {
-				if d := time.Since(retrievalStatus.LastTransitionTime.Time); d < 1*time.Minute {
-					return ctrl.Result{RequeueAfter: d}, nil
+				if d := time.Since(host.Status.Capacity.LastUpdate.Time); d < 1*time.Minute {
+					return ctrl.Result{RequeueAfter: 1*time.Minute - d}, nil
 				}
 			}
 			if err := r.updateHostCapacity(ctx, host, hostEntry); err != nil {
@@ -225,21 +226,35 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 	hClient, end := hostEntry.Session()
 	defer end()
 
-	_, memory, cpu, _, _, _, _, _, err := hClient.NodeGetInfo()
-	if err != nil {
-		return err
-	}
-	memFree, err := hClient.NodeGetFreeMemory()
+	_, _, cpu, _, _, _, _, _, err := hClient.NodeGetInfo()
 	if err != nil {
 		return err
 	}
 
+	memory := v1alpha1.HostMemory{}
+
+	memStats, _, err := hClient.NodeGetMemoryStats(4, int32(libvirt.NodeMemoryStatsAllCells), 0)
+	if err != nil {
+		return err
+	}
+
+	for _, memStat := range memStats {
+		switch memStat.Field {
+		case libvirt.NodeMemoryStatsTotal:
+			memory.Total = int64(utils.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsFree:
+			memory.Free = int64(utils.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsBuffers:
+			memory.Free += int64(utils.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		case libvirt.NodeMemoryStatsCached:
+			memory.Free += int64(utils.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+		}
+	}
+
 	cap := &v1alpha1.HostCapacity{
-		CPU: cpu,
-		Memory: v1alpha1.HostMemory{
-			Total: int64(utils.ConvertToBytes(memory, "KB")), // #nosec #G115
-			Free:  int64(memFree),                            // #nosec #G115
-		},
+		CPU:        cpu,
+		Memory:     memory,
+		LastUpdate: metav1.Now(),
 	}
 	host.Status.Capacity = cap
 
@@ -248,7 +263,7 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageHostDataRetrievalSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, host); err != nil {
 		return err

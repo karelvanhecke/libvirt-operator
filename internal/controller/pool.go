@@ -60,7 +60,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessagePoolDataRetrievalInProgress,
 			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, pool); err != nil {
 			return ctrl.Result{}, err
@@ -91,7 +91,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					Status:             metav1.ConditionTrue,
 					Message:            ConditionMessagePoolInUseByVolume,
 					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Time{Time: time.Now()},
+					LastTransitionTime: metav1.Now(),
 				})
 				if err := r.Status().Update(ctx, pool); err != nil {
 					return ctrl.Result{}, err
@@ -106,8 +106,8 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	if retrievalStatus.Status == metav1.ConditionTrue {
-		if d := time.Since(retrievalStatus.LastTransitionTime.Time); d < 1*time.Minute {
-			return ctrl.Result{RequeueAfter: d}, nil
+		if d := time.Since(pool.Status.Capacity.LastUpdate.Time); d < 1*time.Minute {
+			return ctrl.Result{RequeueAfter: 1*time.Minute - d}, nil
 		}
 	}
 
@@ -119,7 +119,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageHostNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, pool); err != nil {
 				return ctrl.Result{}, err
@@ -136,7 +136,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForHost,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, pool); err != nil {
 				return ctrl.Result{}, err
@@ -187,6 +187,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Capacity:   int64(cap),   // #nosec #G115
 		Allocation: int64(alloc), // #nosec #G115
 		Available:  int64(avail), // #nosec #G115
+		LastUpdate: metav1.Now(),
 	}
 
 	if pool.Labels == nil {
@@ -203,7 +204,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessagePoolDataRetrievalSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, pool); err != nil {
 		return ctrl.Result{}, err

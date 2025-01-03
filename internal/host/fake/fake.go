@@ -40,8 +40,8 @@ const (
 )
 
 type Memory struct {
-	Total int64
-	Free  int64
+	Total uint64
+	Free  uint64
 }
 
 type Fake struct {
@@ -486,9 +486,12 @@ func (f *Fake) WithCapacity(cpu int64, memory Memory) {
 	f.memory = memory
 }
 
-func (f *Fake) NodeGetFreeMemory() (rFreeMem uint64, err error) {
+func (f *Fake) NodeGetMemoryStats(Nparams int32, CellNum int32, Flags uint32) (rParams []libvirt.NodeGetMemoryStats, rNparams int32, err error) {
 	// #nosec #G115
-	return uint64(f.memory.Free), nil
+	return []libvirt.NodeGetMemoryStats{
+		{Field: libvirt.NodeMemoryStatsTotal, Value: f.memory.Total},
+		{Field: libvirt.NodeMemoryStatsFree, Value: f.memory.Free},
+	}, 2, nil
 }
 
 func (f *Fake) NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error) {

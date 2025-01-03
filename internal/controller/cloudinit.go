@@ -21,7 +21,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/diskfs/go-diskfs/backend/file"
 	"github.com/diskfs/go-diskfs/filesystem/iso9660"
@@ -80,7 +79,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessagePoolNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -96,7 +95,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForPool,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -118,7 +117,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageHostNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -135,7 +134,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForHost,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -183,7 +182,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Status:             metav1.ConditionFalse,
 		Message:            ConditionMessageCloudInitCreationInProgress,
 		Reason:             ConditionReasonInProgress,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, ci); err != nil {
 		return ctrl.Result{}, err
@@ -211,7 +210,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageCloudInitCreationFailed,
 			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, ci); err != nil {
 			return ctrl.Result{}, err
@@ -224,7 +223,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageCloudInitCreationSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, ci); err != nil {
 		return ctrl.Result{}, err
