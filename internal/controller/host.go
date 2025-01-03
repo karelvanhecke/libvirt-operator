@@ -26,6 +26,7 @@ import (
 	"github.com/digitalocean/go-libvirt/socket/dialers"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
+	"github.com/karelvanhecke/libvirt-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -236,8 +237,8 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 	cap := &v1alpha1.HostCapacity{
 		CPU: cpu,
 		Memory: v1alpha1.HostMemory{
-			Total: int64(memory),  // #nosec #G115
-			Free:  int64(memFree), // #nosec #G115
+			Total: int64(utils.ConvertToBytes(memory, "KB")), // #nosec #G115
+			Free:  int64(memFree),                            // #nosec #G115
 		},
 	}
 	host.Status.Capacity = cap
