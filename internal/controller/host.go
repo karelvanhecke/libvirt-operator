@@ -100,7 +100,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				if err := r.Status().Update(ctx, host); err != nil {
 					return ctrl.Result{}, err
 				}
-				return ctrl.Result{}, fmt.Errorf("can not delete host %s while in use by volumes", host.Name)
+				return ctrl.Result{Requeue: true}, nil
 			}
 
 			r.HostStore.Deregister(ctx, host.UID)

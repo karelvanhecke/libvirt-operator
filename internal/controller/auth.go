@@ -82,7 +82,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				if err := r.Status().Update(ctx, auth); err != nil {
 					return ctrl.Result{}, err
 				}
-				return ctrl.Result{}, fmt.Errorf("can not delete auth %s while in use by hosts", auth.Name)
+				return ctrl.Result{Requeue: true}, nil
 			}
 
 			r.AuthStore.Deregister(ctx, auth.UID)
