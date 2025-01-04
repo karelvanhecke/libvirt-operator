@@ -21,7 +21,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/diskfs/go-diskfs/backend/file"
 	"github.com/diskfs/go-diskfs/filesystem/iso9660"
@@ -72,15 +71,53 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		size = 2048
 	}
 
+	poolRef := &v1alpha1.Pool{}
+	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}, poolRef); err != nil {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
+			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessagePoolNotFound,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, ci); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, err
+	}
+
+	if poolRef.Status.Identifier == nil || poolRef.Status.Active == nil || !*poolRef.Status.Active {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
+			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessageWaitingForPool,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, ci); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	pool, err := resolvePoolIdentifier(poolRef.Status.Identifier)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.HostRef.Name, Namespace: ci.Namespace}, hostRef); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: poolRef.Spec.HostRef.Name, Namespace: ci.Namespace}, hostRef); err != nil {
 		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
 			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
 				Type:               ConditionTypeCreated,
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageHostNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -97,7 +134,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForHost,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, ci); err != nil {
 				return ctrl.Result{}, err
@@ -107,23 +144,6 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	hClient, end := hostEntry.Session()
 	defer end()
-
-	pool, found := poolAvailable(hostRef.Spec.Pools, ci.Spec.Pool)
-	if !found {
-		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessagePoolNotAvailable,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
-			})
-			if err := r.Status().Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
 
 	// #nosec #G115
 	action, err := action.NewVolumeAction(hClient, ci.Namespace+":"+"cidata:"+ci.Name, pool,
@@ -162,7 +182,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Status:             metav1.ConditionFalse,
 		Message:            ConditionMessageCloudInitCreationInProgress,
 		Reason:             ConditionReasonInProgress,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, ci); err != nil {
 		return ctrl.Result{}, err
@@ -174,13 +194,23 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	action.WithLocalSource(iso)
+
+	if ci.Labels == nil {
+		ci.Labels = map[string]string{LabelKeyPool: ci.Spec.PoolRef.Name}
+	} else {
+		ci.Labels[LabelKeyPool] = ci.Spec.PoolRef.Name
+	}
+	if err := r.Update(ctx, ci); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if err := action.Create(); err != nil {
 		meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
 			Type:               ConditionTypeCreated,
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageCloudInitCreationFailed,
 			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, ci); err != nil {
 			return ctrl.Result{}, err
@@ -193,7 +223,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageCloudInitCreationSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	if err := r.Status().Update(ctx, ci); err != nil {
 		return ctrl.Result{}, err

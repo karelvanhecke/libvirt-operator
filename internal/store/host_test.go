@@ -18,7 +18,6 @@ package store_test
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -43,14 +42,14 @@ func TestHostStore(t *testing.T) {
 
 	var entry *store.HostEntry
 	for i := range 2 {
-		ver := strconv.Itoa(i)
-		s.Register(ctx, uid, ver, dialers.NewLocal())
+		gen := int64(i)
+		s.Register(ctx, uid, gen, dialers.NewLocal())
 
 		e, ok := s.Lookup(uid)
 		if !ok {
 			t.Fail()
 		}
-		if e.Version() != ver {
+		if e.Generation() != gen {
 			t.Fail()
 		}
 		entry = e

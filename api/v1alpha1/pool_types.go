@@ -20,58 +20,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type HostSpec struct {
-	// +kubebuilder:validation:Required
-	Address string `json:"address"`
-	// +kubebuilder:validation:Required
-	AuthRef ResourceRef `json:"authRef"`
-
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=65535
-	// +kubebuilder:validation:Optional
-	Port *int32 `json:"port,omitempty"`
+type PoolSpec struct {
+	LibvirtLookup `json:",inline"`
 }
 
-type HostMemory struct {
+type PoolCapacity struct {
 	// +kubebuilder:validation:Required
-	Total int64 `json:"total"`
+	Capacity int64 `json:"capacity"`
 	// +kubebuilder:validation:Required
-	Free int64 `json:"free"`
-}
-
-type HostCapacity struct {
+	Allocation int64 `json:"allocation"`
 	// +kubebuilder:validation:Required
-	CPU int32 `json:"cpu"`
-	// +kubebuilder:validation:Required
-	Memory HostMemory `json:"memory"`
+	Available int64 `json:"available"`
 	// +kubebuilder:validation:Required
 	LastUpdate metav1.Time `json:"lastUpdate"`
 }
 
 // +kubebuilder:validation:Optional
-type HostStatus struct {
-	Capacity   *HostCapacity      `json:"capacity,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+type PoolStatus struct {
+	Identifier *LibvirtIdentifierWithUUID `json:"identifier,omitempty"`
+	Active     *bool                      `json:"active,omitempty"`
+	Capacity   *PoolCapacity              `json:"capacity,omitempty"`
+	Conditions []metav1.Condition         `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-type Host struct {
+type Pool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HostSpec   `json:"spec,omitempty"`
-	Status HostStatus `json:"status,omitempty"`
+	Spec   PoolSpec   `json:"spec,omitempty"`
+	Status PoolStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-type HostList struct {
+type PoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Host `json:"items"`
+	Items []Pool `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Host{}, &HostList{})
+	SchemeBuilder.Register(&Pool{}, &PoolList{})
 }

@@ -24,7 +24,7 @@ type VolumeSize struct {
 	// +kubebuilder:validation:Enum=bytes;B;KB;K;KiB;MB;M;MiB;GB;G;GiB;TB;T;TiB;PB;P;PiB;EB;E;EiB
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Default=bytes
-	Unit *string `json:"unit,omitempty"`
+	Unit string `json:"unit,omitempty"`
 
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validaton:XValidation:rule="self > oldSelf",message="volume can only be expanded"
@@ -42,30 +42,41 @@ type VolumeSource struct {
 	Checksum *string `json:"checksum,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="has(self.size) ? true : has(self.source) || has(self.backingStoreRef)",message="size can only be omitted when a backing store is defined"
 // +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
 type VolumeSpec struct {
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change format of existing volume"
 	// +kubebuilder:validation:Enum=qcow2;raw
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
+
 	// +kubebuilder:validation:Required
-	HostRef ResourceRef `json:"hostRef"`
+	Size VolumeSize `json:"size,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	Size *VolumeSize `json:"size,omitempty"`
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change pool of existing volume"
+	// +kubebuilder:validation:Required
+	PoolRef ResourceRef `json:"poolRef"`
 
-	// +kubebuilder:validation:Optional
-	Pool *string `json:"pool,omitempty"`
-
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change source of existing volume"
 	// +kubebuilder:validation:Optional
 	Source *VolumeSource `json:"source,omitempty"`
 
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change backing store of existing volume"
 	// +kubebuilder:validation:Optional
 	BackingStoreRef *ResourceRef `json:"backingStoreRef,omitempty"`
 }
 
+type VolumeIdentifier struct {
+	// +kubebuilder:validation:Required
+	Pool string `json:"pool"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// +kubebuilder:validation:Required
+	Key string `json:"key"`
+}
+
 // +kubebuilder:validation:Optional
 type VolumeStatus struct {
+	Identifier *VolumeIdentifier  `json:"identifier,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

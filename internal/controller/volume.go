@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/action"
@@ -45,11 +44,7 @@ const (
 	ErrVolumeIsBackingStore        = "volume can not be deleted while used as backing store"
 	ErrVolumeSourceAndBackingStore = "volume can not have a source and backing store at the same time"
 	ErrBackingStoreNotCreated      = "backing store volume has not yet been created"
-)
-
-// Condition reasons
-const (
-	ConditionReasonIsBackingStore = "IsBackingStore"
+	ErrBackingStoreNotSamePool     = "backing store does not exist on the same pool"
 )
 
 // Condition messages
@@ -57,6 +52,7 @@ const (
 	ConditionMessageBackingStoreNotExist     = "Backing store volume does not exist"
 	ConditionMessageBackingStoreNotCreated   = "Backing store volume has not yet been created"
 	ConditionMessageIsBackingStore           = "Volume is currently in use as a backingstore"
+	ConditionMessageBackingStoreNotSamePool  = "Backing store volume does not exist on the same pool"
 	ConditionMessageVolumeCreationInProgress = "Volume creation in progress"
 	ConditionMessageVolumeCreationFailed     = "Volume creation failed"
 	ConditionMessageVolumeCreationSucceeded  = "Volume creation succeeded"
@@ -80,22 +76,60 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageVolumeCreationInProgress,
 			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
+	poolRef := &v1alpha1.Pool{}
+	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.PoolRef.Name, Namespace: volume.Namespace}, poolRef); err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
+			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessagePoolNotFound,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, volume); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, err
+	}
+
+	if poolRef.Status.Identifier == nil || poolRef.Status.Active == nil || !*poolRef.Status.Active {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
+			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessageWaitingForPool,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, volume); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	pool, err := resolvePoolIdentifier(poolRef.Status.Identifier)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.HostRef.Name, Namespace: volume.Namespace}, hostRef); err != nil {
+	if err := r.Get(ctx, types.NamespacedName{Name: poolRef.Spec.HostRef.Name, Namespace: volume.Namespace}, hostRef); err != nil {
 		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
 			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
 				Type:               ConditionTypeCreated,
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageHostNotFound,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -112,7 +146,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageWaitingForHost,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
@@ -123,29 +157,8 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	hClient, end := hostEntry.Session()
 	defer end()
 
-	pool, found := poolAvailable(hostRef.Spec.Pools, volume.Spec.Pool)
-	if !found {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessagePoolNotAvailable,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	size := &libvirtxml.StorageVolumeSize{}
-	if s := volume.Spec.Size; s != nil {
-		size.Unit = *s.Unit
-		// #nosec #G115
-		size.Value = uint64(s.Value)
-	}
+	// #nosec #G115
+	size := &libvirtxml.StorageVolumeSize{Unit: volume.Spec.Size.Unit, Value: uint64(volume.Spec.Size.Value)}
 
 	action, err := action.NewVolumeAction(hClient, volume.Namespace+":"+volume.Name, pool, size, &libvirtxml.StorageVolumeTargetFormat{Type: volume.Spec.Format})
 	if err != nil {
@@ -210,8 +223,8 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 			Type:               ConditionTypeDeletionProbihibited,
 			Status:             metav1.ConditionTrue,
 			Message:            ConditionMessageIsBackingStore,
-			Reason:             ConditionReasonIsBackingStore,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			Reason:             ConditionReasonInUse,
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return err
@@ -236,12 +249,26 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageBackingStoreNotExist,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return err
 			}
 			return err
+		}
+
+		if backingStore.Spec.PoolRef != volume.Spec.PoolRef {
+			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
+				Type:               ConditionTypeCreated,
+				Status:             metav1.ConditionFalse,
+				Message:            ConditionMessageBackingStoreNotSamePool,
+				Reason:             ConditionReasonFailed,
+				LastTransitionTime: metav1.Now(),
+			})
+			if err := r.Status().Update(ctx, volume); err != nil {
+				return err
+			}
+			return errors.New(ErrBackingStoreNotSamePool)
 		}
 
 		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, ConditionTypeCreated) {
@@ -250,7 +277,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 				Status:             metav1.ConditionFalse,
 				Message:            ConditionMessageBackingStoreNotCreated,
 				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Time{Time: time.Now()},
+				LastTransitionTime: metav1.Now(),
 			})
 			if err := r.Status().Update(ctx, volume); err != nil {
 				return err
@@ -272,9 +299,9 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		}
 	}
 	if volume.Labels == nil {
-		volume.Labels = map[string]string{LabelKeyHost: volume.Spec.HostRef.Name}
+		volume.Labels = map[string]string{LabelKeyPool: volume.Spec.PoolRef.Name}
 	} else {
-		volume.Labels[LabelKeyHost] = volume.Spec.HostRef.Name
+		volume.Labels[LabelKeyPool] = volume.Spec.PoolRef.Name
 	}
 	if err := r.Update(ctx, volume); err != nil {
 		return err
@@ -285,7 +312,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 			Status:             metav1.ConditionFalse,
 			Message:            ConditionMessageVolumeCreationFailed,
 			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Time{Time: time.Now()},
+			LastTransitionTime: metav1.Now(),
 		})
 		if err := r.Status().Update(ctx, volume); err != nil {
 			return err
@@ -297,7 +324,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		Status:             metav1.ConditionTrue,
 		Message:            ConditionMessageVolumeCreationSucceeded,
 		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
+		LastTransitionTime: metav1.Now(),
 	})
 	return r.Status().Update(ctx, volume)
 }

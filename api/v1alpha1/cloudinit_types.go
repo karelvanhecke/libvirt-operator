@@ -451,11 +451,10 @@ type CloudInitNetworkConfig struct {
 	VLANs map[string]CloudInitVLAN `json:"vlans,omitempty" yaml:"vlans,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change existing cloud init data store"
 type CloudInitSpec struct {
 	// +kubebuilder:validation:Required
-	HostRef ResourceRef `json:"hostRef"`
-	// +kubebuilder:validation:Optional
-	Pool *string `json:"pool,omitempty"`
+	PoolRef ResourceRef `json:"poolRef"`
 	// +kubebuilder:validation:Optional
 	Metadata *CloudInitMetadata `json:"metadata,omitempty"`
 	// +kubebuilder:validation:Optional
@@ -468,6 +467,7 @@ type CloudInitSpec struct {
 
 // +kubebuilder:validation:Optional
 type CloudInitStatus struct {
+	Identifier *VolumeIdentifier  `json:"identifier,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

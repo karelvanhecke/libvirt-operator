@@ -38,6 +38,9 @@ rules:
   - auths
   - cloudinits
   - hosts
+  - networks
+  - pcidevices
+  - pools
   - volumes
   verbs:
   - create
@@ -53,6 +56,9 @@ rules:
   - auths/finalizers
   - cloudinits/finalizers
   - hosts/finalizers
+  - networks/finalizers
+  - pcidevices/finalizers
+  - pools/finalizers
   - volumes/finalizers
   verbs:
   - update
@@ -61,6 +67,10 @@ rules:
   resources:
   - auths/status
   - cloudinits/status
+  - hosts/status
+  - networks/status
+  - pcidevices/status
+  - pools/status
   - volumes/status
   verbs:
   - get

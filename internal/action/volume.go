@@ -28,7 +28,7 @@ import (
 
 	"github.com/digitalocean/go-libvirt"
 	"github.com/karelvanhecke/libvirt-operator/internal/host"
-	"github.com/karelvanhecke/libvirt-operator/internal/utils"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -45,16 +45,11 @@ type VolumeAction struct {
 	source       *os.File
 }
 
-func NewVolumeAction(client host.Client, name string, pool string, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
-	p, err := client.StoragePoolLookupByName(pool)
-	if err != nil {
-		return nil, err
-	}
-
+func NewVolumeAction(client host.Client, name string, pool libvirt.StoragePool, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
 	a := &VolumeAction{
 		Client: client,
 		name:   name,
-		pool:   p,
+		pool:   pool,
 		size:   size,
 		format: format,
 	}
@@ -203,8 +198,8 @@ func (a *VolumeAction) Update() error {
 		return nil
 	}
 
-	s := utils.ConvertToBytes(a.state.Capacity.Value, a.state.Capacity.Unit)
-	r := utils.ConvertToBytes(a.size.Value, a.size.Unit)
+	s := util.ConvertToBytes(a.state.Capacity.Value, a.state.Capacity.Unit)
+	r := util.ConvertToBytes(a.size.Value, a.size.Unit)
 
 	if r > s {
 		return a.StorageVolResize(*a.id, r, 0)

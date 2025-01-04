@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	"github.com/digitalocean/go-libvirt"
+	"github.com/google/uuid"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -38,7 +39,14 @@ const (
 	ErrNodedevNotExist      = "Node device does not exist"
 )
 
+type Memory struct {
+	Total uint64
+	Free  uint64
+}
+
 type Fake struct {
+	cpu            int32
+	memory         Memory
 	connectFail    bool
 	disconnectFail bool
 	disconnected   chan struct{}
@@ -206,7 +214,7 @@ func (f *Fake) StorageVolDelete(vol libvirt.StorageVol, flags libvirt.StorageVol
 func (f *Fake) getPoolByName(name string) (*Pool, error) {
 	i := slices.IndexFunc(f.pools, func(pool *Pool) bool { return pool.xml.Name == name })
 	if i == -1 {
-		return nil, errors.New(ErrPoolNotExist)
+		return nil, libvirt.Error{Code: uint32(libvirt.ErrNoStoragePool), Message: ErrPoolNotExist}
 	}
 	return f.pools[i], nil
 }
@@ -415,4 +423,76 @@ func (f *Fake) StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err
 		return -1, err
 	}
 	return p.state, nil
+}
+
+func (f *Fake) StoragePoolGetInfo(Pool libvirt.StoragePool) (rState uint8, rCapacity uint64, rAllocation uint64, rAvailable uint64, err error) {
+	p, err := f.getPoolByName(Pool.Name)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	// #nosec #G115
+	return uint8(p.state), p.xml.Capacity.Value, p.xml.Allocation.Value, p.xml.Available.Value, nil
+}
+
+func (f *Fake) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {
+	n, err := f.getNetworkByName(Name)
+	if err != nil {
+		return libvirt.Network{}, err
+	}
+
+	return libvirt.Network{Name: n.xml.Name}, nil
+}
+func (f *Fake) NetworkLookupByUUID(UUID libvirt.UUID) (rNet libvirt.Network, err error) {
+	u, err := uuid.FromBytes(UUID[:])
+	if err != nil {
+		return libvirt.Network{}, err
+	}
+
+	i := slices.IndexFunc(f.networks, func(n *Network) bool { return n.xml.UUID == u.String() })
+	if i == -1 {
+		return libvirt.Network{}, libvirt.Error{Code: uint32(libvirt.ErrNoNetwork), Message: ErrNetworkNotExist}
+	}
+
+	n := f.networks[i]
+	return libvirt.Network{Name: n.xml.Name, UUID: UUID}, nil
+}
+
+func (f *Fake) StoragePoolLookupByUUID(UUID libvirt.UUID) (rPool libvirt.StoragePool, err error) {
+	u, err := uuid.FromBytes(UUID[:])
+	if err != nil {
+		return libvirt.StoragePool{}, err
+	}
+
+	i := slices.IndexFunc(f.pools, func(n *Pool) bool { return n.xml.UUID == u.String() })
+	if i == -1 {
+		return libvirt.StoragePool{}, libvirt.Error{Code: uint32(libvirt.ErrNoStoragePool), Message: ErrPoolNotExist}
+	}
+
+	p := f.pools[i]
+	return libvirt.StoragePool{Name: p.xml.Name, UUID: UUID}, nil
+}
+
+func (f *Fake) NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err error) {
+	d, err := f.getNodeDeviceByName(Name)
+	if err != nil {
+		return libvirt.NodeDevice{}, err
+	}
+
+	return libvirt.NodeDevice{Name: d.xml.Name}, nil
+}
+
+func (f *Fake) WithCapacity(cpu int32, memory Memory) {
+	f.cpu = cpu
+	f.memory = memory
+}
+
+func (f *Fake) NodeGetMemoryStats(Nparams int32, CellNum int32, Flags uint32) (rParams []libvirt.NodeGetMemoryStats, rNparams int32, err error) {
+	return []libvirt.NodeGetMemoryStats{
+		{Field: libvirt.NodeMemoryStatsTotal, Value: f.memory.Total},
+		{Field: libvirt.NodeMemoryStatsFree, Value: f.memory.Free},
+	}, 2, nil
+}
+
+func (f *Fake) NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error) {
+	return [32]int8{}, f.memory.Total, f.cpu, 0, 0, 0, 0, 0, nil
 }

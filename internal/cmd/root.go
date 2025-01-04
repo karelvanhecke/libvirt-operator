@@ -72,13 +72,23 @@ func NewOperatorCmd() *cobra.Command {
 	return cmd
 }
 
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices/finalizers,verbs=update
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=networks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=networks/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=networks/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=cloudinits/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=volumes/finalizers,verbs=update
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pools,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pools/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pools/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=hosts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=hosts/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=hosts/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=auths,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=auths/status,verbs=get;update;patch
@@ -175,6 +185,30 @@ func runOperator() {
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "failed to setup host controller with manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.PoolReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup pool controller with manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.NetworkReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup pool controller with manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.PCIDeviceReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup pool controller with manager")
 		os.Exit(1)
 	}
 

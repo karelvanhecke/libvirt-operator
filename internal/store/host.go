@@ -33,10 +33,10 @@ var (
 )
 
 type HostEntry struct {
-	version  string
-	client   host.Client
-	sessions map[types.UID]struct{}
-	mon      chan struct{}
+	generation int64
+	client     host.Client
+	sessions   map[types.UID]struct{}
+	mon        chan struct{}
 }
 
 type HostStore struct {
@@ -48,15 +48,19 @@ func NewHostStore() *HostStore {
 	return &HostStore{entries: make(map[types.UID]*HostEntry)}
 }
 
-func (s *HostStore) Register(ctx context.Context, uid types.UID, version string, dialer socket.Dialer) {
+func (s *HostStore) Register(ctx context.Context, uid types.UID, generation int64, dialer socket.Dialer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	oldEntry, found := s.entries[uid]
 
 	entry := &HostEntry{
-		version: version,
-		client:  host.New(dialer),
+		generation: generation,
+		client:     host.New(dialer),
+	}
+
+	if err := entry.client.Connect(); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to connect host host")
 	}
 
 	go entry.startMon(ctx, uid)
@@ -100,8 +104,8 @@ func (e *HostEntry) Session() (client host.Client, end func()) {
 	return e.client, end
 }
 
-func (e *HostEntry) Version() string {
-	return e.version
+func (e *HostEntry) Generation() int64 {
+	return e.generation
 }
 
 func (e *HostEntry) startMon(ctx context.Context, uid types.UID) {
