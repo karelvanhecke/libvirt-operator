@@ -20,8 +20,10 @@ func ConvertToBytes(value uint64, unit string) uint64 {
 	const B = 1
 	const KB = 1000
 	const KiB = 1024
-	const GB = KB * 1000
-	const GiB = KiB * 1024
+	const MB = KB * 1000
+	const MiB = KiB * 1024
+	const GB = MB * 1000
+	const GiB = MiB * 1024
 	const TB = GB * 1000
 	const TiB = GiB * 1024
 	const PB = TB * 1000
@@ -36,6 +38,9 @@ func ConvertToBytes(value uint64, unit string) uint64 {
 		"KB":    KB,
 		"K":     KiB,
 		"KiB":   KiB,
+		"MB":    MB,
+		"M":     MiB,
+		"MiB":   MiB,
 		"GB":    GB,
 		"G":     GiB,
 		"GiB":   GiB,
