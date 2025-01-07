@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/digitalocean/go-libvirt"
 	"github.com/digitalocean/go-libvirt/socket"
 	"github.com/digitalocean/go-libvirt/socket/dialers"
@@ -41,9 +42,9 @@ import (
 )
 
 const (
-	ConditionMessageHostDataRetrievalInProgress = "host data retrieval in progress"
-	ConditionMessageHostInUseByResource         = "host is in use by another resource"
-	ConditionMessageHostDataRetrievalSucceeded  = "Host data retrieval succeeded"
+	CondMsgHostDataRetrievalInProgress = "host data retrieval in progress"
+	CondMsgHostInUseByResource         = "host is in use by another resource"
+	CondMsgHostDataRetrievalSucceeded  = "Host data retrieval succeeded"
 )
 
 type HostReconciler struct {
@@ -58,22 +59,14 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if host.Status.Capacity == nil {
-		meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeDataRetrieved,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessageHostDataRetrievalInProgress,
-			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, host); err != nil {
+	if !meta.IsStatusConditionPresentAndEqual(host.Status.Conditions, CondTypeDataRetrieved, metav1.ConditionTrue) {
+		if err := r.setStatusCondition(ctx, host, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgHostDataRetrievalInProgress, CondReasonInProgress); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	if host.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(host, Finalizer) {
-			controllerutil.AddFinalizer(host, Finalizer)
+		if controllerutil.AddFinalizer(host, Finalizer) {
 			if err := r.Update(ctx, host); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -98,14 +91,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			if len(pools.Items)+len(networks.Items)+len(pciDevices.Items) > 0 {
-				meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
-					Type:               ConditionTypeDeletionProbihibited,
-					Status:             metav1.ConditionTrue,
-					Message:            ConditionMessageHostInUseByResource,
-					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Now(),
-				})
-				if err := r.Status().Update(ctx, host); err != nil {
+				if err := r.setStatusCondition(ctx, host, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgHostInUseByResource, CondReasonInUse); err != nil {
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{Requeue: true}, nil
@@ -114,18 +100,17 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			r.HostStore.Deregister(ctx, host.UID)
 
 			controllerutil.RemoveFinalizer(host, Finalizer)
-			if err := r.Update(ctx, host); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+			err = r.Update(ctx, host)
+			return ctrl.Result{}, err
 
+		}
 		return ctrl.Result{}, nil
 	}
 
 	auth := &v1alpha1.Auth{}
 
 	if err := r.Get(ctx, types.NamespacedName{Name: host.Spec.AuthRef.Name, Namespace: host.Namespace}, auth); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	authEntry, found := r.AuthStore.Lookup(auth.UID)
@@ -207,6 +192,9 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Host{}).Watches(&v1alpha1.Auth{},
 		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
+			if !o.GetDeletionTimestamp().IsZero() {
+				return nil
+			}
 			labelSelector, err := labels.NewRequirement(LabelKeyAuth, selection.Equals, []string{o.GetName()})
 			if err != nil {
 				return []reconcile.Request{}
@@ -247,13 +235,13 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 	for _, memStat := range memStats {
 		switch memStat.Field {
 		case libvirt.NodeMemoryStatsTotal:
-			memory.Total = int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+			memory.Total = safecast.ToInt64(util.ConvertToBytes(memStat.Value, "KB"))
 		case libvirt.NodeMemoryStatsFree:
-			memory.Free = int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+			memory.Free = safecast.ToInt64(util.ConvertToBytes(memStat.Value, "KB"))
 		case libvirt.NodeMemoryStatsBuffers:
-			memory.Free += int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+			memory.Free += safecast.ToInt64(util.ConvertToBytes(memStat.Value, "KB"))
 		case libvirt.NodeMemoryStatsCached:
-			memory.Free += int64(util.ConvertToBytes(memStat.Value, "KB")) // #nosec #G115
+			memory.Free += safecast.ToInt64(util.ConvertToBytes(memStat.Value, "KB"))
 		}
 	}
 
@@ -264,16 +252,16 @@ func (r *HostReconciler) updateHostCapacity(ctx context.Context, host *v1alpha1.
 	}
 	host.Status.Capacity = cap
 
+	return r.setStatusCondition(ctx, host, CondTypeDataRetrieved, metav1.ConditionTrue, CondMsgHostDataRetrievalSucceeded, CondReasonSucceeded)
+}
+
+func (r *HostReconciler) setStatusCondition(ctx context.Context, host *v1alpha1.Host, cType string, status metav1.ConditionStatus, msg string, reason string) error {
 	meta.SetStatusCondition(&host.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeDataRetrieved,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessageHostDataRetrievalSucceeded,
-		Reason:             ConditionReasonSucceeded,
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
 		LastTransitionTime: metav1.Now(),
 	})
-	if err := r.Status().Update(ctx, host); err != nil {
-		return err
-	}
-
 	return r.Status().Update(ctx, host)
 }

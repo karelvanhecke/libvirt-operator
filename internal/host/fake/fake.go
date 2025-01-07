@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/digitalocean/go-libvirt"
 	"github.com/google/uuid"
 	"libvirt.org/go/libvirtxml"
@@ -430,8 +431,7 @@ func (f *Fake) StoragePoolGetInfo(Pool libvirt.StoragePool) (rState uint8, rCapa
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
-	// #nosec #G115
-	return uint8(p.state), p.xml.Capacity.Value, p.xml.Allocation.Value, p.xml.Available.Value, nil
+	return safecast.ToUint8(p.state), p.xml.Capacity.Value, p.xml.Allocation.Value, p.xml.Available.Value, nil
 }
 
 func (f *Fake) NetworkLookupByName(Name string) (rNet libvirt.Network, err error) {

@@ -64,12 +64,12 @@ func (s *HostStore) Register(ctx context.Context, uid types.UID, generation int6
 		ctrl.LoggerFrom(ctx).Error(err, "failed to connect host host")
 	}
 
-	go entry.startMon(ctx, uid)
+	go entry.monitor(ctx, uid)
 
 	s.entries[uid] = entry
 
 	if found {
-		go oldEntry.endMon(ctx, uid)
+		go oldEntry.gracefulDisconnect(ctx, uid)
 	}
 }
 
@@ -80,7 +80,7 @@ func (s *HostStore) Deregister(ctx context.Context, uid types.UID) {
 	entry, found := s.entries[uid]
 	if found {
 		delete(s.entries, uid)
-		go entry.endMon(ctx, uid)
+		go entry.gracefulDisconnect(ctx, uid)
 	}
 }
 
@@ -114,7 +114,7 @@ func (e *HostEntry) Generation() int64 {
 	return e.generation
 }
 
-func (e *HostEntry) startMon(ctx context.Context, uid types.UID) {
+func (e *HostEntry) monitor(ctx context.Context, uid types.UID) {
 	e.mon = make(chan struct{})
 	for {
 		if e.client != nil {
@@ -132,7 +132,7 @@ func (e *HostEntry) startMon(ctx context.Context, uid types.UID) {
 	}
 }
 
-func (e *HostEntry) endMon(ctx context.Context, uid types.UID) {
+func (e *HostEntry) gracefulDisconnect(ctx context.Context, uid types.UID) {
 	e.mon <- struct{}{}
 	for {
 		if e.client != nil && e.client.IsConnected() {

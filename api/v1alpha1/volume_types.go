@@ -23,7 +23,6 @@ import (
 type VolumeSize struct {
 	// +kubebuilder:validation:Enum=bytes;B;KB;K;KiB;MB;M;MiB;GB;G;GiB;TB;T;TiB;PB;P;PiB;EB;E;EiB
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Default=bytes
 	Unit string `json:"unit,omitempty"`
 
 	// +kubebuilder:validation:Minimum=1
@@ -43,14 +42,15 @@ type VolumeSource struct {
 }
 
 // +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
+// +kubebuilder:validation:XValidation:rule="!has(self.size) ? has(self.backingStoreRef) || has(self.source) : true",message="size can only be omitted when a source or backing store or defined"
 type VolumeSpec struct {
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change format of existing volume"
 	// +kubebuilder:validation:Enum=qcow2;raw
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
 
-	// +kubebuilder:validation:Required
-	Size VolumeSize `json:"size,omitempty"`
+	// +kubebuilder:validation:Optional
+	Size *VolumeSize `json:"size,omitempty"`
 
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change pool of existing volume"
 	// +kubebuilder:validation:Required

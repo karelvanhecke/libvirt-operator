@@ -22,25 +22,29 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/diskfs/go-diskfs/backend/file"
 	"github.com/diskfs/go-diskfs/filesystem/iso9660"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/action"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
-	"gopkg.in/yaml.v3"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"libvirt.org/go/libvirtxml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
-	ConditionMessageCloudInitCreationInProgress = "cloud-init creation in progress"
-	ConditionMessageCloudInitCreationFailed     = "cloud-init creation failed"
-	ConditionMessageCloudInitCreationSucceeded  = "cloud-init creation succeeded"
+	CondMsgCloudInitCreationInProgress = "cloud-init creation in progress"
+	CondMsgCloudInitCreationFailed     = "cloud-init creation failed"
+	CondMsgCloudInitCreationSucceeded  = "cloud-init creation succeeded"
+)
+
+const (
+	CIPrefix = "cidata:"
 )
 
 type CloudInitReconciler struct {
@@ -52,6 +56,71 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	ci := &v1alpha1.CloudInit{}
 	if err := r.Get(ctx, req.NamespacedName, ci); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if !meta.IsStatusConditionPresentAndEqual(ci.Status.Conditions, CondTypeCreated, metav1.ConditionTrue) {
+		if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgCloudInitCreationInProgress, CondReasonInProgress); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	pool, host, err := r.resolveRefs(ctx, ci)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	poolID, err := resolvePoolIdentifier(pool.Status.Identifier)
+	if err != nil {
+		if err.Error() == ErrIDNotSet {
+			if !meta.IsStatusConditionTrue(ci.Status.Conditions, CondTypeCreated) {
+				if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForPool, CondReasonInProgress); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			return ctrl.Result{Requeue: true}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	hostEntry, found := r.HostStore.Lookup(host.UID)
+	if !found {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+	hostClient, end := hostEntry.Session()
+	defer end()
+
+	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(ci.Namespace, CIPrefix+ci.Name), poolID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if ci.DeletionTimestamp.IsZero() {
+		if controllerutil.AddFinalizer(ci, Finalizer) {
+			if err := r.Update(ctx, ci); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(ci, Finalizer) {
+			if action.State() {
+				if err := action.Delete(); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			controllerutil.RemoveFinalizer(ci, Finalizer)
+			err := r.Update(ctx, ci)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if action.State() {
+		return ctrl.Result{}, nil
 	}
 
 	metadata := ci.Spec.Metadata
@@ -71,129 +140,14 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		size = 2048
 	}
 
-	poolRef := &v1alpha1.Pool{}
-	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}, poolRef); err != nil {
-		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessagePoolNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, err
-	}
-
-	if poolRef.Status.Identifier == nil || poolRef.Status.Active == nil || !*poolRef.Status.Active {
-		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForPool,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	pool, err := resolvePoolIdentifier(poolRef.Status.Identifier)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: poolRef.Spec.HostRef.Name, Namespace: ci.Namespace}, hostRef); err != nil {
-		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageHostNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, err
-	}
-
-	hostEntry, found := r.HostStore.Lookup(hostRef.UID)
-	if !found {
-		if !meta.IsStatusConditionTrue(ci.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForHost,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-	hClient, end := hostEntry.Session()
-	defer end()
-
-	// #nosec #G115
-	action, err := action.NewVolumeAction(hClient, ci.Namespace+":"+"cidata:"+ci.Name, pool,
-		&libvirtxml.StorageVolumeSize{Unit: "bytes", Value: uint64(size)},
-		&libvirtxml.StorageVolumeTargetFormat{Type: "raw"})
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if ci.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(ci, Finalizer) {
-			controllerutil.AddFinalizer(ci, Finalizer)
-			if err := r.Update(ctx, ci); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
-		if controllerutil.ContainsFinalizer(ci, Finalizer) {
-			if action.State() {
-				if err := action.Delete(); err != nil {
-					return ctrl.Result{}, err
-				}
-			}
-			controllerutil.RemoveFinalizer(ci, Finalizer)
-			err := r.Update(ctx, ci)
-			return ctrl.Result{}, err
-		}
-	}
-
-	if action.State() {
-		return ctrl.Result{}, nil
-	}
-
-	meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeCreated,
-		Status:             metav1.ConditionFalse,
-		Message:            ConditionMessageCloudInitCreationInProgress,
-		Reason:             ConditionReasonInProgress,
-		LastTransitionTime: metav1.Now(),
-	})
-	if err := r.Status().Update(ctx, ci); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	iso, err := cloudInitCreateISO(sourceFiles, size)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	action.WithLocalSource(iso)
+	action.Size("bytes", safecast.ToUint64(size))
+	action.Format("raw")
+	action.LocalSource(iso)
 
 	if ci.Labels == nil {
 		ci.Labels = map[string]string{LabelKeyPool: ci.Spec.PoolRef.Name}
@@ -204,32 +158,18 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if err := action.Create(); err != nil {
-		meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeCreated,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessageCloudInitCreationFailed,
-			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, ci); err != nil {
+	if err = action.Create(); err != nil {
+		if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgCloudInitCreationFailed, CondReasonFailed); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, err
 	}
 
-	meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeCreated,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessageCloudInitCreationSucceeded,
-		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Now(),
-	})
-	if err := r.Status().Update(ctx, ci); err != nil {
+	if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionTrue, CondMsgCloudInitCreationSucceeded, CondReasonSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err := os.Remove(iso.Name()); err != nil {
+	if err := action.CleanupSource(); err != nil {
 		ctrl.LoggerFrom(ctx).Error(err, "could not cleanup cached cloud-init iso")
 	}
 
@@ -240,8 +180,43 @@ func (r *CloudInitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.CloudInit{}).Complete(r)
 }
 
+func (r *CloudInitReconciler) resolveRefs(ctx context.Context, ci *v1alpha1.CloudInit) (*v1alpha1.Pool, *v1alpha1.Host, error) {
+	pool := &v1alpha1.Pool{}
+	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}, pool); err != nil {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgPoolNotFound, CondReasonFailed); err != nil {
+				return nil, nil, err
+			}
+		}
+		return nil, nil, err
+	}
+
+	host := &v1alpha1.Host{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: ci.Namespace}, host); err != nil {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, ci, CondTypeCreated, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
+				return nil, nil, err
+			}
+		}
+		return nil, nil, err
+	}
+
+	return pool, host, nil
+}
+
+func (r *CloudInitReconciler) setStatusCondition(ctx context.Context, ci *v1alpha1.CloudInit, cType string, status metav1.ConditionStatus, msg string, reason string) error {
+	meta.SetStatusCondition(&ci.Status.Conditions, metav1.Condition{
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
+		LastTransitionTime: metav1.Now(),
+	})
+	return r.Status().Update(ctx, ci)
+}
+
 func cloudInitCloudConfig(config *v1alpha1.CloudInitCloudConfig) ([]byte, error) {
-	return yamlMarshallWithEncoder(bytes.NewBuffer([]byte("#cloud-config\n")), config)
+	return util.Marshal(bytes.NewBuffer([]byte("#cloud-config\n")), config)
 }
 
 func cloudInitNetworkConfig(config *v1alpha1.CloudInitNetworkConfig) ([]byte, error) {
@@ -261,19 +236,7 @@ func cloudInitNetworkConfig(config *v1alpha1.CloudInitNetworkConfig) ([]byte, er
 		},
 	}
 
-	return yamlMarshallWithEncoder(bytes.NewBuffer([]byte{}), cfg)
-}
-
-func yamlMarshallWithEncoder(buffer *bytes.Buffer, data any) ([]byte, error) {
-	enc := yaml.NewEncoder(buffer)
-	enc.SetIndent(2)
-	if err := enc.Encode(data); err != nil {
-		return nil, err
-	}
-	if err := enc.Close(); err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
+	return util.Marshal(bytes.NewBuffer([]byte{}), cfg)
 }
 
 func cloudInitSourceFiles(metadata *v1alpha1.CloudInitMetadata,
@@ -287,7 +250,7 @@ func cloudInitSourceFiles(metadata *v1alpha1.CloudInitMetadata,
 		size = size + int64(len(s))
 	}
 
-	metadataBytes, err := yamlMarshallWithEncoder(bytes.NewBuffer([]byte{}), metadata)
+	metadataBytes, err := util.Marshal(bytes.NewBuffer([]byte{}), metadata)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -322,8 +285,8 @@ func cloudInitSourceFiles(metadata *v1alpha1.CloudInitMetadata,
 	return
 }
 
-func cloudInitCreateISO(sourceFiles map[string][]byte, size int64) (iso *os.File, err error) {
-	iso, err = os.CreateTemp("", "iso.")
+func cloudInitCreateISO(sourceFiles map[string][]byte, size int64) (*os.File, error) {
+	iso, err := os.CreateTemp("", "iso.")
 	if err != nil {
 		return nil, err
 	}
@@ -355,5 +318,5 @@ func cloudInitCreateISO(sourceFiles map[string][]byte, size int64) (iso *os.File
 		return nil, err
 	}
 
-	return
+	return iso, nil
 }

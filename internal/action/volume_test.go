@@ -17,6 +17,7 @@ limitations under the License.
 package action_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -34,7 +35,7 @@ func TestVolumeExists(t *testing.T) {
 	volume := "fake-volume"
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
@@ -47,9 +48,10 @@ func TestVolumeNotExists(t *testing.T) {
 	f := fake.New()
 
 	pool := "fake-pool"
+	volume := "fake-volume"
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
-	a, err := action.NewVolumeAction(f, "fake-volume", libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
@@ -68,10 +70,12 @@ func TestVolumeCreate(t *testing.T) {
 	value := uint64(1000)
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{Unit: unit, Value: value}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
+	a.Size(unit, value)
+	a.Format(format)
 
 	if err := a.Create(); err != nil {
 		t.Fail()
@@ -94,7 +98,7 @@ func TestVolumeCreate(t *testing.T) {
 	}
 }
 
-func TestVolumeCreateWithBackingStore(t *testing.T) {
+func TestVolumeCreateBackingStore(t *testing.T) {
 	f := fake.New()
 
 	pool := "fake-pool"
@@ -120,12 +124,13 @@ func TestVolumeCreateWithBackingStore(t *testing.T) {
 		},
 	})
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, nil, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
+	a.Format(format)
 
-	if err := a.WithBackingStore(backingStore); err != nil {
+	if err := a.BackingStore(backingStore); err != nil {
 		t.Fail()
 	}
 
@@ -157,10 +162,13 @@ func TestVolumeCreateWithSource(t *testing.T) {
 	pool := "fake-pool"
 	volume := "fake-volume"
 	format := "qcow2"
-	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
+	unit := "bytes"
 
 	source := []byte("fake-source")
 	checksum := "sha256:bb92dcbbdf410e3bd2e139fc2cb7c9ff4e490cfe3aa968779615324669e44152"
+	value := uint64(len(source))
+	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), nil)
+
 	server := httptest.NewServer(
 		http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
@@ -173,12 +181,13 @@ func TestVolumeCreateWithSource(t *testing.T) {
 	)
 	defer server.Close()
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{}, &libvirtxml.StorageVolumeTargetFormat{Type: format})
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
+	a.Format(format)
 
-	if err := a.WithRemoteSource(server.URL, &checksum); err != nil {
+	if err := a.RemoteSource(context.TODO(), server.URL, &checksum); err != nil {
 		t.Fail()
 	}
 
@@ -197,8 +206,8 @@ func TestVolumeCreateWithSource(t *testing.T) {
 
 	if v.Name != volume ||
 		v.Target.Format.Type != format ||
-		v.Capacity.Unit != "bytes" ||
-		v.Capacity.Value != uint64(len(source)) {
+		v.Capacity.Unit != unit ||
+		v.Capacity.Value != value {
 		t.Fail()
 	}
 }
@@ -218,12 +227,12 @@ func TestVolumeUpdate(t *testing.T) {
 		},
 	})
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, &libvirtxml.StorageVolumeSize{Unit: unit, Value: newValue}, nil)
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}
 
-	if err := a.Update(); err != nil {
+	if err := a.Update(unit, newValue); err != nil {
 		t.Fail()
 	}
 
@@ -250,7 +259,7 @@ func TestVolumeDelete(t *testing.T) {
 
 	f.WithPool(&libvirtxml.StoragePool{Name: pool}, int32(libvirt.StoragePoolRunning), []*libvirtxml.StorageVolume{{Name: volume}})
 
-	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool}, nil, nil)
+	a, err := action.NewVolumeAction(f, volume, libvirt.StoragePool{Name: pool})
 	if err != nil {
 		t.Fatal()
 	}

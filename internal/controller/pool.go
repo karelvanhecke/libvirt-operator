@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/digitalocean/go-libvirt"
 	"github.com/google/uuid"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
@@ -35,9 +36,9 @@ import (
 )
 
 const (
-	ConditionMessagePoolDataRetrievalInProgress = "Pool data retrieval in progress"
-	ConditionMessagePoolDataRetrievalSucceeded  = "Pool data retrieval succeeded"
-	ConditionMessagePoolInUseByVolume           = "Pool in use by volume"
+	CondMsgPoolDataRetrievalInProgress = "Pool data retrieval in progress"
+	CondMsgPoolDataRetrievalSucceeded  = "Pool data retrieval succeeded"
+	CondMsgPoolInUseByVolume           = "Pool in use by volume"
 )
 
 type PoolReconciler struct {
@@ -52,22 +53,14 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if pool.Status.Capacity == nil {
-		meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeDataRetrieved,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessagePoolDataRetrievalInProgress,
-			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, pool); err != nil {
+	if !meta.IsStatusConditionPresentAndEqual(pool.Status.Conditions, CondTypeDataRetrieved, metav1.ConditionTrue) {
+		if err := r.setStatusCondition(ctx, pool, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgPoolDataRetrievalInProgress, CondReasonInProgress); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	if pool.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(pool, Finalizer) {
-			controllerutil.AddFinalizer(pool, Finalizer)
+		if controllerutil.AddFinalizer(pool, Finalizer) {
 			if err := r.Update(ctx, pool); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -84,14 +77,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			if len(volumes.Items) > 0 {
-				meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
-					Type:               ConditionTypeDeletionProbihibited,
-					Status:             metav1.ConditionTrue,
-					Message:            ConditionMessagePoolInUseByVolume,
-					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Now(),
-				})
-				if err := r.Status().Update(ctx, pool); err != nil {
+				if err := r.setStatusCondition(ctx, pool, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgPoolInUseByVolume, CondReasonInUse); err != nil {
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{Requeue: true}, nil
@@ -99,8 +85,8 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			controllerutil.RemoveFinalizer(pool, Finalizer)
 			err = r.Update(ctx, pool)
 			return ctrl.Result{}, err
-
 		}
+		return ctrl.Result{}, nil
 	}
 
 	if pool.Status.Capacity != nil {
@@ -109,46 +95,32 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: pool.Namespace}, hostRef); err != nil {
-		if !meta.IsStatusConditionTrue(pool.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageHostNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, pool); err != nil {
+	host := &v1alpha1.Host{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: pool.Namespace}, host); err != nil {
+		if !meta.IsStatusConditionTrue(pool.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, pool, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{}, err
 	}
 
-	hostEntry, found := r.HostStore.Lookup(hostRef.UID)
+	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if !found {
-		if !meta.IsStatusConditionTrue(pool.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForHost,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, pool); err != nil {
+		if !meta.IsStatusConditionTrue(pool.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, pool, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hClient, end := hostEntry.Session()
+	hostClient, end := hostEntry.Session()
 	defer end()
 
 	var poolID libvirt.StoragePool
 	switch {
 	case pool.Spec.Name != nil:
-		p, err := hClient.StoragePoolLookupByName(*pool.Spec.Name)
+		p, err := hostClient.StoragePoolLookupByName(*pool.Spec.Name)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -158,7 +130,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		p, err := hClient.StoragePoolLookupByUUID(libvirt.UUID(u))
+		p, err := hostClient.StoragePoolLookupByUUID(libvirt.UUID(u))
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -174,7 +146,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		UUID:              u.String(),
 	}
 
-	state, cap, alloc, avail, err := hClient.StoragePoolGetInfo(poolID)
+	state, cap, alloc, avail, err := hostClient.StoragePoolGetInfo(poolID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -182,20 +154,13 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	poolRunning := (state == uint8(libvirt.StoragePoolRunning))
 	pool.Status.Active = &poolRunning
 	pool.Status.Capacity = &v1alpha1.PoolCapacity{
-		Capacity:   int64(cap),   // #nosec #G115
-		Allocation: int64(alloc), // #nosec #G115
-		Available:  int64(avail), // #nosec #G115
+		Capacity:   safecast.ToInt64(cap),
+		Allocation: safecast.ToInt64(alloc),
+		Available:  safecast.ToInt64(avail),
 		LastUpdate: metav1.Now(),
 	}
 
-	meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeDataRetrieved,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessagePoolDataRetrievalSucceeded,
-		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Now(),
-	})
-	if err := r.Status().Update(ctx, pool); err != nil {
+	if err := r.setStatusCondition(ctx, pool, CondTypeDataRetrieved, metav1.ConditionTrue, CondMsgPoolDataRetrievalSucceeded, CondReasonSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -213,4 +178,15 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 func (r *PoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Pool{}).Complete(r)
+}
+
+func (r *PoolReconciler) setStatusCondition(ctx context.Context, pool *v1alpha1.Pool, cType string, status metav1.ConditionStatus, msg string, reason string) error {
+	meta.SetStatusCondition(&pool.Status.Conditions, metav1.Condition{
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
+		LastTransitionTime: metav1.Now(),
+	})
+	return r.Status().Update(ctx, pool)
 }

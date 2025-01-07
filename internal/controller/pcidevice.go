@@ -20,7 +20,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/digitalocean/go-libvirt"
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	ConditionMessagePCIDeviceDataRetrievalInProgress = "PCIDevice data retrieval in progress"
-	ConditionMessagePCIDeviceDataRetrievalSucceeded  = "PCIDevice data retrieval succeeded"
+	CondMsgPCIDeviceDataRetrievalInProgress = "PCIDevice data retrieval in progress"
+	CondMsgPCIDeviceDataRetrievalSucceeded  = "PCIDevice data retrieval succeeded"
 )
 
 type PCIDeviceReconciler struct {
@@ -42,81 +42,57 @@ type PCIDeviceReconciler struct {
 	HostStore *store.HostStore
 }
 
-func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	pciDevice := &v1alpha1.PCIDevice{}
 
-	err = r.Get(ctx, req.NamespacedName, pciDevice)
+	err := r.Get(ctx, req.NamespacedName, pciDevice)
 	if err != nil {
-		return
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !meta.IsStatusConditionPresentAndEqual(pciDevice.Status.Conditions, ConditionTypeDataRetrieved, metav1.ConditionTrue) {
-		meta.SetStatusCondition(&pciDevice.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeDataRetrieved,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessagePCIDeviceDataRetrievalInProgress,
-			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Now(),
-		})
-		err = r.Status().Update(ctx, pciDevice)
-		if err != nil {
-			return
+	if !meta.IsStatusConditionPresentAndEqual(pciDevice.Status.Conditions, CondTypeDataRetrieved, metav1.ConditionTrue) {
+		if err := r.setStatusCondition(ctx, pciDevice, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgPCIDeviceDataRetrievalInProgress, CondReasonInProgress); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
 	if pciDevice.DeletionTimestamp.IsZero() {
 		if controllerutil.AddFinalizer(pciDevice, Finalizer) {
-			err = r.Update(ctx, pciDevice)
-			if err != nil {
-				return
+			if err := r.Update(ctx, pciDevice); err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(pciDevice, Finalizer) {
 			// TODO
 			ctrl.LoggerFrom(ctx).V(1).Info("check if pciDevice is referred by domains")
+			controllerutil.RemoveFinalizer(pciDevice, Finalizer)
+			err := r.Update(ctx, pciDevice)
+			return ctrl.Result{}, err
 		}
-		controllerutil.RemoveFinalizer(pciDevice, Finalizer)
-		err = r.Update(ctx, pciDevice)
-		if err != nil {
-			return
-		}
+		return ctrl.Result{}, nil
 	}
 
-	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: pciDevice.Spec.HostRef.Name, Namespace: pciDevice.Namespace}, hostRef); err != nil {
-		if !meta.IsStatusConditionTrue(pciDevice.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&pciDevice.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageHostNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, pciDevice); err != nil {
+	host := &v1alpha1.Host{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pciDevice.Spec.HostRef.Name, Namespace: pciDevice.Namespace}, host); err != nil {
+		if !meta.IsStatusConditionTrue(pciDevice.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, pciDevice, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{}, err
 	}
 
-	hostEntry, found := r.HostStore.Lookup(hostRef.UID)
+	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if !found {
-		if !meta.IsStatusConditionTrue(pciDevice.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&pciDevice.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForHost,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, pciDevice); err != nil {
+		if !meta.IsStatusConditionTrue(pciDevice.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, pciDevice, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hClient, end := hostEntry.Session()
+	hostClient, end := hostEntry.Session()
 	defer end()
 
 	if ts := pciDevice.Status.LastUpdate; ts != nil {
@@ -125,24 +101,23 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	var pciDeviceID libvirt.NodeDevice
-	pciDeviceID, err = hClient.NodeDeviceLookupByName(pciDevice.Spec.Name)
-
-	var pciDeviceActive int32
-	pciDeviceActive, err = hClient.NodeDeviceIsActive(pciDevice.Spec.Name)
+	pciDeviceID, err := hostClient.NodeDeviceLookupByName(pciDevice.Spec.Name)
 	if err != nil {
-		return
+		return ctrl.Result{}, err
 	}
 
-	var pciDeviceXML string
-	pciDeviceXML, err = hClient.NodeDeviceGetXMLDesc(pciDeviceID.Name, 0)
+	pciDeviceActive, err := hostClient.NodeDeviceIsActive(pciDevice.Spec.Name)
 	if err != nil {
-		return
+		return ctrl.Result{}, err
+	}
+
+	pciDeviceXML, err := hostClient.NodeDeviceGetXMLDesc(pciDeviceID.Name, 0)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 	pciDeviceInfo := &libvirtxml.NodeDevice{}
-	err = pciDeviceInfo.Unmarshal(pciDeviceXML)
-	if err != nil {
-		return
+	if err := pciDeviceInfo.Unmarshal(pciDeviceXML); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	active := pciDeviceActive == 1
@@ -153,24 +128,16 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	pciDevice.Status.Address = &v1alpha1.PCIDeviceAddress{
-		Domain:   int32(*pciDeviceInfo.Capability.PCI.Domain),   // #nosec #G115
-		Bus:      int32(*pciDeviceInfo.Capability.PCI.Bus),      // #nosec #G115
-		Slot:     int32(*pciDeviceInfo.Capability.PCI.Slot),     // #nosec #G115
-		Function: int32(*pciDeviceInfo.Capability.PCI.Function), // #nosec #G115
+		Domain:   safecast.ToInt32(*pciDeviceInfo.Capability.PCI.Domain),
+		Bus:      safecast.ToInt32(*pciDeviceInfo.Capability.PCI.Bus),
+		Slot:     safecast.ToInt32(*pciDeviceInfo.Capability.PCI.Slot),
+		Function: safecast.ToInt32(*pciDeviceInfo.Capability.PCI.Function),
 	}
 
 	pciDevice.Status.LastUpdate = &metav1.Time{Time: time.Now()}
 
-	meta.SetStatusCondition(&pciDevice.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeDataRetrieved,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessagePCIDeviceDataRetrievalSucceeded,
-		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Now(),
-	})
-	err = r.Status().Update(ctx, pciDevice)
-	if err != nil {
-		return
+	if err := r.setStatusCondition(ctx, pciDevice, CondTypeDataRetrieved, metav1.ConditionTrue, CondMsgPCIDeviceDataRetrievalSucceeded, CondReasonSucceeded); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if pciDevice.Labels == nil {
@@ -178,9 +145,8 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	} else {
 		pciDevice.Labels[LabelKeyHost] = pciDevice.Spec.HostRef.Name
 	}
-	err = r.Update(ctx, pciDevice)
-	if err != nil {
-		return
+	if err := r.Update(ctx, pciDevice); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{RequeueAfter: DataRefreshInterval}, nil
@@ -188,4 +154,15 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *PCIDeviceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.PCIDevice{}).Complete(r)
+}
+
+func (r *PCIDeviceReconciler) setStatusCondition(ctx context.Context, pciDevice *v1alpha1.PCIDevice, cType string, status metav1.ConditionStatus, msg string, reason string) error {
+	meta.SetStatusCondition(&pciDevice.Status.Conditions, metav1.Condition{
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
+		LastTransitionTime: metav1.Now(),
+	})
+	return r.Status().Update(ctx, pciDevice)
 }
