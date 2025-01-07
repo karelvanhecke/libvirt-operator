@@ -33,6 +33,7 @@ var (
 )
 
 type HostEntry struct {
+	mu         sync.Mutex
 	generation int64
 	client     host.Client
 	sessions   map[types.UID]struct{}
@@ -92,12 +93,17 @@ func (s *HostStore) Lookup(uid types.UID) (entry *HostEntry, found bool) {
 }
 
 func (e *HostEntry) Session() (client host.Client, end func()) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	if e.sessions == nil {
 		e.sessions = make(map[types.UID]struct{})
 	}
 
 	sessionID := uuid.NewUUID()
 	end = func() {
+		e.mu.Lock()
+		defer e.mu.Unlock()
 		delete(e.sessions, sessionID)
 	}
 	e.sessions[sessionID] = struct{}{}
