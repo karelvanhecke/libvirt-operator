@@ -34,26 +34,26 @@ const (
 // Condition types
 
 const (
-	ConditionTypeCreated              = "Created"
-	ConditionTypeDeletionProbihibited = "DeletionProhibited"
-	ConditionTypeDataRetrieved        = "DataRetrieved"
+	CondTypeCreated              = "Created"
+	CondTypeDeletionProbihibited = "DeletionProhibited"
+	CondTypeDataRetrieved        = "DataRetrieved"
 )
 
 // Condition reasons
 
 const (
-	ConditionReasonInProgress = "InProgress"
-	ConditionReasonFailed     = "Failed"
-	ConditionReasonSucceeded  = "Succeeded"
-	ConditionReasonInUse      = "InUse"
+	CondReasonInProgress = "InProgress"
+	CondReasonFailed     = "Failed"
+	CondReasonSucceeded  = "Succeeded"
+	CondReasonInUse      = "InUse"
 )
 
 // Condition messages
 const (
-	ConditionMessageHostNotFound   = "Host not found"
-	ConditionMessageWaitingForHost = "Waiting for host to become available"
-	ConditionMessagePoolNotFound   = "Pool not found"
-	ConditionMessageWaitingForPool = "Waiting for pool to become available"
+	CondMsgHostNotFound   = "Host not found"
+	CondMsgWaitingForHost = "Waiting for host to become available"
+	CondMsgPoolNotFound   = "Pool not found"
+	CondMsgWaitingForPool = "Waiting for pool to become available"
 )
 
 // Auth file names

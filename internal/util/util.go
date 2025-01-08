@@ -16,6 +16,12 @@ limitations under the License.
 
 package util
 
+import (
+	"bytes"
+
+	"gopkg.in/yaml.v3"
+)
+
 func ConvertToBytes(value uint64, unit string) uint64 {
 	const B = 1
 	const KB = 1000
@@ -56,4 +62,20 @@ func ConvertToBytes(value uint64, unit string) uint64 {
 	}
 
 	return value * unitConversion[unit]
+}
+
+func LibvirtNamespacedName(namespace string, name string) string {
+	return namespace + ":" + name
+}
+
+func Marshal(buffer *bytes.Buffer, data any) ([]byte, error) {
+	enc := yaml.NewEncoder(buffer)
+	enc.SetIndent(2)
+	if err := enc.Encode(data); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }

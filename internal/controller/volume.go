@@ -20,15 +20,16 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/action"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	"libvirt.org/go/libvirtxml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -49,13 +50,13 @@ const (
 
 // Condition messages
 const (
-	ConditionMessageBackingStoreNotExist     = "Backing store volume does not exist"
-	ConditionMessageBackingStoreNotCreated   = "Backing store volume has not yet been created"
-	ConditionMessageIsBackingStore           = "Volume is currently in use as a backingstore"
-	ConditionMessageBackingStoreNotSamePool  = "Backing store volume does not exist on the same pool"
-	ConditionMessageVolumeCreationInProgress = "Volume creation in progress"
-	ConditionMessageVolumeCreationFailed     = "Volume creation failed"
-	ConditionMessageVolumeCreationSucceeded  = "Volume creation succeeded"
+	CondMsgBackingStoreNotExist     = "Backing store volume does not exist"
+	CondMsgBackingStoreNotCreated   = "Backing store volume has not yet been created"
+	CondMsgIsBackingStore           = "Volume is currently in use as a backingstore"
+	CondMsgBackingStoreNotSamePool  = "Backing store volume does not exist on the same pool"
+	CondMsgVolumeCreationInProgress = "Volume creation in progress"
+	CondMsgVolumeCreationFailed     = "Volume creation failed"
+	CondMsgVolumeCreationSucceeded  = "Volume creation succeeded"
 )
 
 type VolumeReconciler struct {
@@ -70,115 +71,59 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if volume.Status.Conditions == nil {
-		meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeCreated,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessageVolumeCreationInProgress,
-			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, volume); err != nil {
+	if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
+		if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgVolumeCreationInProgress, CondReasonInProgress); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	poolRef := &v1alpha1.Pool{}
-	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.PoolRef.Name, Namespace: volume.Namespace}, poolRef); err != nil {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessagePoolNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, err
-	}
-
-	if poolRef.Status.Identifier == nil || poolRef.Status.Active == nil || !*poolRef.Status.Active {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForPool,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-	pool, err := resolvePoolIdentifier(poolRef.Status.Identifier)
+	pool, host, err := r.resolveRefs(ctx, volume)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: poolRef.Spec.HostRef.Name, Namespace: volume.Namespace}, hostRef); err != nil {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageHostNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
-				return ctrl.Result{}, err
+	poolID, err := resolvePoolIdentifier(pool.Status.Identifier)
+	if err != nil {
+		if err.Error() == ErrIDNotSet {
+			if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
+				if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForPool, CondReasonInProgress); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
+			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, err
 	}
 
-	hostEntry, found := r.HostStore.Lookup(hostRef.UID)
+	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if !found {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForHost,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hClient, end := hostEntry.Session()
+	hostClient, end := hostEntry.Session()
 	defer end()
 
-	// #nosec #G115
-	size := &libvirtxml.StorageVolumeSize{Unit: volume.Spec.Size.Unit, Value: uint64(volume.Spec.Size.Value)}
-
-	action, err := action.NewVolumeAction(hClient, volume.Namespace+":"+volume.Name, pool, size, &libvirtxml.StorageVolumeTargetFormat{Type: volume.Spec.Format})
+	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(volume.Namespace, volume.Name), poolID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	exists := action.State()
 
 	if volume.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(volume, Finalizer) {
-			controllerutil.AddFinalizer(volume, Finalizer)
+		if controllerutil.AddFinalizer(volume, Finalizer) {
 			if err := r.Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(volume, Finalizer) {
-			if exists {
+			if action.State() {
 				if err := r.delete(ctx, volume, action); err != nil {
-					if err.Error() == ErrVolumeIsBackingStore {
-						ctrl.LoggerFrom(ctx).V(1).Info(ErrVolumeIsBackingStore, "volume", volume.Name)
+					if msg := err.Error(); msg == ErrVolumeIsBackingStore {
+						ctrl.LoggerFrom(ctx).V(1).Info(msg)
 						return ctrl.Result{Requeue: true}, nil
 					}
 					return ctrl.Result{}, err
@@ -188,16 +133,20 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			err := r.Update(ctx, volume)
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
 	}
 
-	if exists {
-		err := action.Update()
+	if action.State() {
+		if volume.Spec.Size == nil {
+			return ctrl.Result{}, nil
+		}
+		err := action.Update(volume.Spec.Size.Unit, safecast.ToUint64(volume.Spec.Size.Value))
 		return ctrl.Result{}, err
 	}
 
 	if err := r.create(ctx, volume, action); err != nil {
-		if err.Error() == ErrBackingStoreNotCreated {
-			ctrl.LoggerFrom(ctx).V(1).Info(ErrBackingStoreNotCreated, "volume", volume.Name)
+		if msg := err.Error(); msg == ErrBackingStoreNotCreated {
+			ctrl.LoggerFrom(ctx).V(1).Info(msg)
 			return ctrl.Result{Requeue: true}, nil
 		}
 	}
@@ -219,14 +168,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 	}
 
 	if len(volumes.Items) > 0 {
-		meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeDeletionProbihibited,
-			Status:             metav1.ConditionTrue,
-			Message:            ConditionMessageIsBackingStore,
-			Reason:             ConditionReasonInUse,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, volume); err != nil {
+		if err := r.setStatusCondition(ctx, volume, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgIsBackingStore, CondReasonInUse); err != nil {
 			return err
 		}
 		return errors.New(ErrVolumeIsBackingStore)
@@ -236,57 +178,42 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 }
 
 func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
+	if size := volume.Spec.Size; size != nil {
+		action.Size(volume.Spec.Size.Unit, safecast.ToUint64(volume.Spec.Size.Value))
+	}
+	action.Format(volume.Spec.Format)
+
+	hasSource := volume.Spec.Source != nil
+
 	switch {
-	case volume.Spec.Source != nil:
-		if err := action.WithRemoteSource(volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {
+	case hasSource:
+		if err := action.RemoteSource(ctx, volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {
 			return err
 		}
 	case volume.Spec.BackingStoreRef != nil:
 		backingStore := &v1alpha1.Volume{}
 		if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.BackingStoreRef.Name, Namespace: volume.Namespace}, backingStore); err != nil {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageBackingStoreNotExist,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotExist, CondReasonFailed); err != nil {
 				return err
 			}
 			return err
 		}
 
 		if backingStore.Spec.PoolRef != volume.Spec.PoolRef {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageBackingStoreNotSamePool,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotSamePool, CondReasonFailed); err != nil {
 				return err
 			}
 			return errors.New(ErrBackingStoreNotSamePool)
 		}
 
-		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeCreated,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageBackingStoreNotCreated,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, volume); err != nil {
+		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotCreated, CondReasonInProgress); err != nil {
 				return err
 			}
 			return errors.New(ErrBackingStoreNotCreated)
 		}
 
-		err := action.WithBackingStore(backingStore.Namespace + ":" + backingStore.Name)
-		if err != nil {
+		if err := action.BackingStore(backingStore.Namespace + ":" + backingStore.Name); err != nil {
 			return err
 		}
 		if volume.Labels == nil {
@@ -307,23 +234,50 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		return err
 	}
 	if err := action.Create(); err != nil {
-		meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeCreated,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessageVolumeCreationFailed,
-			Reason:             ConditionReasonFailed,
-			LastTransitionTime: metav1.Now(),
-		})
-		if err := r.Status().Update(ctx, volume); err != nil {
+		if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgVolumeCreationFailed, CondReasonFailed); err != nil {
 			return err
 		}
 		return err
 	}
+	if hasSource {
+		if err := action.CleanupSource(); err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "could not cleanup volume source")
+		}
+	}
+
+	return r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionTrue, CondMsgVolumeCreationSucceeded, CondReasonSucceeded)
+}
+
+func (r *VolumeReconciler) resolveRefs(ctx context.Context, volume *v1alpha1.Volume) (*v1alpha1.Pool, *v1alpha1.Host, error) {
+	pool := &v1alpha1.Pool{}
+	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.PoolRef.Name, Namespace: volume.Namespace}, pool); err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgPoolNotFound, CondReasonFailed); err != nil {
+				return nil, nil, err
+			}
+		}
+		return nil, nil, err
+	}
+
+	host := &v1alpha1.Host{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: volume.Namespace}, host); err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
+				return nil, nil, err
+			}
+		}
+		return nil, nil, err
+	}
+
+	return pool, host, nil
+}
+
+func (r *VolumeReconciler) setStatusCondition(ctx context.Context, volume *v1alpha1.Volume, cType string, status metav1.ConditionStatus, msg string, reason string) error {
 	meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeCreated,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessageVolumeCreationSucceeded,
-		Reason:             ConditionReasonSucceeded,
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
 		LastTransitionTime: metav1.Now(),
 	})
 	return r.Status().Update(ctx, volume)

@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	ConditionMessageNetworkDataRetrievalInProgress = "Network data retrieval in progress"
-	ConditionMessageNetworkDataRetrievalSucceeded  = "Network data retrieval succeeded"
+	CondMsgNetworkDataRetrievalInProgress = "Network data retrieval in progress"
+	CondMsgNetworkDataRetrievalSucceeded  = "Network data retrieval succeeded"
 )
 
 type NetworkReconciler struct {
@@ -42,81 +42,56 @@ type NetworkReconciler struct {
 	HostStore *store.HostStore
 }
 
-func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	network := &v1alpha1.Network{}
 
-	err = r.Get(ctx, req.NamespacedName, network)
-	if err != nil {
-		return
+	if err := r.Get(ctx, req.NamespacedName, network); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !meta.IsStatusConditionPresentAndEqual(network.Status.Conditions, ConditionTypeDataRetrieved, metav1.ConditionTrue) {
-		meta.SetStatusCondition(&network.Status.Conditions, metav1.Condition{
-			Type:               ConditionTypeDataRetrieved,
-			Status:             metav1.ConditionFalse,
-			Message:            ConditionMessageNetworkDataRetrievalInProgress,
-			Reason:             ConditionReasonInProgress,
-			LastTransitionTime: metav1.Now(),
-		})
-		err = r.Status().Update(ctx, network)
-		if err != nil {
-			return
+	if !meta.IsStatusConditionPresentAndEqual(network.Status.Conditions, CondTypeDataRetrieved, metav1.ConditionTrue) {
+		if err := r.setStatusCondition(ctx, network, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgNetworkDataRetrievalInProgress, CondReasonInProgress); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
 	if network.DeletionTimestamp.IsZero() {
 		if controllerutil.AddFinalizer(network, Finalizer) {
-			err = r.Update(ctx, network)
-			if err != nil {
-				return
+			if err := r.Update(ctx, network); err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(network, Finalizer) {
 			// TODO
 			ctrl.LoggerFrom(ctx).V(1).Info("check if network is referred by domains")
+			controllerutil.RemoveFinalizer(network, Finalizer)
+			err := r.Update(ctx, network)
+			return ctrl.Result{}, err
 		}
-		controllerutil.RemoveFinalizer(network, Finalizer)
-		err = r.Update(ctx, network)
-		if err != nil {
-			return
-		}
+		return ctrl.Result{}, nil
 	}
 
-	hostRef := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: network.Spec.HostRef.Name, Namespace: network.Namespace}, hostRef); err != nil {
-		if !meta.IsStatusConditionTrue(network.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&network.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageHostNotFound,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, network); err != nil {
+	host := &v1alpha1.Host{}
+	if err := r.Get(ctx, types.NamespacedName{Name: network.Spec.HostRef.Name, Namespace: network.Namespace}, host); err != nil {
+		if !meta.IsStatusConditionTrue(network.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, network, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{}, err
 	}
 
-	hostEntry, found := r.HostStore.Lookup(hostRef.UID)
+	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if !found {
-		if !meta.IsStatusConditionTrue(network.Status.Conditions, ConditionTypeCreated) {
-			meta.SetStatusCondition(&network.Status.Conditions, metav1.Condition{
-				Type:               ConditionTypeDataRetrieved,
-				Status:             metav1.ConditionFalse,
-				Message:            ConditionMessageWaitingForHost,
-				Reason:             ConditionReasonFailed,
-				LastTransitionTime: metav1.Now(),
-			})
-			if err := r.Status().Update(ctx, network); err != nil {
+		if !meta.IsStatusConditionTrue(network.Status.Conditions, CondTypeCreated) {
+			if err := r.setStatusCondition(ctx, network, CondTypeDataRetrieved, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hClient, end := hostEntry.Session()
+	hostClient, end := hostEntry.Session()
 	defer end()
 
 	if ts := network.Status.LastUpdate; ts != nil {
@@ -128,34 +103,33 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	networkID := libvirt.Network{}
 	switch {
 	case network.Spec.Name != nil:
-		networkID, err = hClient.NetworkLookupByName(*network.Spec.Name)
+		id, err := hostClient.NetworkLookupByName(*network.Spec.Name)
 		if err != nil {
-			return
+			return ctrl.Result{}, err
 		}
+		networkID = id
 	case network.Spec.UUID != nil:
-		var u uuid.UUID
-		u, err = uuid.Parse(*network.Spec.UUID)
+		u, err := uuid.Parse(*network.Spec.UUID)
 		if err != nil {
-			return
+			return ctrl.Result{}, err
 		}
-		networkID, err = hClient.NetworkLookupByUUID(libvirt.UUID(u))
+		id, err := hostClient.NetworkLookupByUUID(libvirt.UUID(u))
 		if err != nil {
-			return
+			return ctrl.Result{}, err
 		}
+		networkID = id
 	}
 
-	var networkActive int32
-	networkActive, err = hClient.NetworkIsActive(networkID)
+	networkActive, err := hostClient.NetworkIsActive(networkID)
 	if err != nil {
-		return
+		return ctrl.Result{}, err
 	}
 
 	active := networkActive == 1
 
-	var u uuid.UUID
-	u, err = uuid.FromBytes(networkID.UUID[:])
+	u, err := uuid.FromBytes(networkID.UUID[:])
 	if err != nil {
-		return
+		return ctrl.Result{}, err
 	}
 
 	network.Status.Active = &active
@@ -167,16 +141,8 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 	network.Status.LastUpdate = &metav1.Time{Time: time.Now()}
 
-	meta.SetStatusCondition(&network.Status.Conditions, metav1.Condition{
-		Type:               ConditionTypeDataRetrieved,
-		Status:             metav1.ConditionTrue,
-		Message:            ConditionMessageNetworkDataRetrievalSucceeded,
-		Reason:             ConditionReasonSucceeded,
-		LastTransitionTime: metav1.Now(),
-	})
-	err = r.Status().Update(ctx, network)
-	if err != nil {
-		return
+	if err := r.setStatusCondition(ctx, network, CondTypeDataRetrieved, metav1.ConditionTrue, CondMsgNetworkDataRetrievalSucceeded, CondReasonSucceeded); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if network.Labels == nil {
@@ -184,9 +150,8 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	} else {
 		network.Labels[LabelKeyHost] = network.Spec.HostRef.Name
 	}
-	err = r.Update(ctx, network)
-	if err != nil {
-		return
+	if err = r.Update(ctx, network); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{RequeueAfter: DataRefreshInterval}, nil
@@ -194,4 +159,15 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 func (r *NetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Network{}).Complete(r)
+}
+
+func (r *NetworkReconciler) setStatusCondition(ctx context.Context, network *v1alpha1.Network, cType string, status metav1.ConditionStatus, msg string, reason string) error {
+	meta.SetStatusCondition(&network.Status.Conditions, metav1.Condition{
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
+		LastTransitionTime: metav1.Now(),
+	})
+	return r.Status().Update(ctx, network)
 }

@@ -33,6 +33,7 @@ type LibvirtLookup struct {
 }
 
 type LibvirtIdentifier struct {
+	// +kubebuilder:validation:Pattern="^[a-z0-9][a-z0-9\\-.]{0,251}[a-z0-9]|[a-z0-9]$"
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 }

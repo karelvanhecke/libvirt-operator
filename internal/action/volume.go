@@ -17,72 +17,94 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"crypto"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/digitalocean/go-libvirt"
 	"github.com/karelvanhecke/libvirt-operator/internal/host"
 	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"libvirt.org/go/libvirtxml"
 )
 
+const (
+	ErrUnsupportedHash  = "unsupported hash"
+	ErrChecksumFail     = "download failed checksum verification"
+	ErrNoExistingVolume = "volume does not exist"
+	ErrVolumeShrinking  = "shrinking a volume is not supported"
+)
+
 type VolumeAction struct {
 	host.Client
-	name  string
-	pool  libvirt.StoragePool
-	id    *libvirt.StorageVol
-	state *libvirtxml.StorageVolume
+	name string
+	pool libvirt.StoragePool
 
-	size         *libvirtxml.StorageVolumeSize
-	format       *libvirtxml.StorageVolumeTargetFormat
-	backingStore *libvirtxml.StorageVolumeBackingStore
-	source       *os.File
+	id  *libvirt.StorageVol
+	def *libvirtxml.StorageVolume
+
+	source *os.File
 }
 
-func NewVolumeAction(client host.Client, name string, pool libvirt.StoragePool, size *libvirtxml.StorageVolumeSize, format *libvirtxml.StorageVolumeTargetFormat) (*VolumeAction, error) {
+func NewVolumeAction(client host.Client, name string, pool libvirt.StoragePool) (*VolumeAction, error) {
 	a := &VolumeAction{
 		Client: client,
 		name:   name,
 		pool:   pool,
-		size:   size,
-		format: format,
 	}
 
-	v, err := a.StorageVolLookupByName(a.pool, a.name)
+	id, err := a.StorageVolLookupByName(a.pool, a.name)
 	if err != nil {
 		if e, ok := err.(libvirt.Error); ok {
 			if e.Code == uint32(libvirt.ErrNoStorageVol) {
+				a.def = &libvirtxml.StorageVolume{
+					Name: a.name,
+				}
 				return a, nil
 			}
 		}
 		return nil, err
 	}
+	a.id = &id
 
-	xml, err := a.StorageVolGetXMLDesc(v, 0)
+	xml, err := a.StorageVolGetXMLDesc(*a.id, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	state := &libvirtxml.StorageVolume{}
-	if err := state.Unmarshal(xml); err != nil {
+	a.def = &libvirtxml.StorageVolume{}
+	if err := a.def.Unmarshal(xml); err != nil {
 		return nil, err
 	}
-	a.id = &v
-	a.state = state
+
 	return a, nil
 }
 
-func (a *VolumeAction) State() bool {
+func (a *VolumeAction) State() (exists bool) {
 	return a.id != nil
 }
 
-func (a *VolumeAction) WithBackingStore(name string) error {
+func (a *VolumeAction) Size(unit string, value uint64) {
+	a.def.Capacity = &libvirtxml.StorageVolumeSize{
+		Unit:  unit,
+		Value: value,
+	}
+}
+
+func (a *VolumeAction) Format(format string) {
+	a.def.Target = &libvirtxml.StorageVolumeTarget{
+		Format: &libvirtxml.StorageVolumeTargetFormat{
+			Type: format,
+		},
+	}
+}
+
+func (a *VolumeAction) BackingStore(name string) error {
 	bs, err := a.StorageVolLookupByName(a.pool, name)
 	if err != nil {
 		return err
@@ -98,29 +120,32 @@ func (a *VolumeAction) WithBackingStore(name string) error {
 		return err
 	}
 
-	a.backingStore = &libvirtxml.StorageVolumeBackingStore{
+	a.def.BackingStore = &libvirtxml.StorageVolumeBackingStore{
 		Path:   info.Target.Path,
 		Format: info.Target.Format,
 	}
 
-	if a.size == nil {
-		a.size = info.Capacity
+	if a.def.Capacity == nil {
+		a.Size(info.Capacity.Unit, info.Capacity.Value)
 	}
 
 	return nil
 }
 
-func (a *VolumeAction) WithLocalSource(file *os.File) {
+func (a *VolumeAction) LocalSource(file *os.File) {
 	a.source = file
 }
 
-func (a *VolumeAction) WithRemoteSource(url string, checksum *string) error {
-	// #nosec G107
-	resp, err := http.Get(url)
+func (a *VolumeAction) RemoteSource(ctx context.Context, url string, checksum *string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
 
 	a.source, err = os.CreateTemp("", "volume-source")
 	if err != nil {
@@ -139,7 +164,7 @@ func (a *VolumeAction) WithRemoteSource(url string, checksum *string) error {
 		c := strings.Split(strings.ToLower(*checksum), ":")
 		h, supported := hashes[c[0]]
 		if !supported {
-			return fmt.Errorf("unsupported hash: %s", *checksum)
+			return errors.New(ErrUnsupportedHash)
 		}
 		hash := h.New()
 
@@ -150,7 +175,7 @@ func (a *VolumeAction) WithRemoteSource(url string, checksum *string) error {
 			return err
 		}
 		if hashString := hex.EncodeToString(hash.Sum(nil)); hashString != c[1] {
-			return fmt.Errorf("download failed checksum verification, hash: %s", hashString)
+			return errors.New(ErrChecksumFail)
 		}
 	}
 
@@ -158,21 +183,15 @@ func (a *VolumeAction) WithRemoteSource(url string, checksum *string) error {
 		return err
 	}
 
+	if a.def.Capacity == nil {
+		a.Size("", safecast.ToUint64(resp.ContentLength))
+	}
+
 	return nil
 }
 
 func (a *VolumeAction) Create() error {
-	def := &libvirtxml.StorageVolume{
-		Name:     a.name,
-		Capacity: a.size,
-		Target:   &libvirtxml.StorageVolumeTarget{Format: a.format},
-	}
-
-	if a.backingStore != nil {
-		def.BackingStore = a.backingStore
-	}
-
-	xml, err := def.Marshal()
+	xml, err := a.def.Marshal()
 	if err != nil {
 		return err
 	}
@@ -189,28 +208,28 @@ func (a *VolumeAction) Create() error {
 	return nil
 }
 
-func (a *VolumeAction) Update() error {
-	if a.id == nil {
-		return errors.New("can not update non-existing volume")
+func (a *VolumeAction) Update(unit string, value uint64) error {
+	current := util.ConvertToBytes(a.def.Capacity.Value, a.def.Capacity.Unit)
+	desired := util.ConvertToBytes(value, unit)
+
+	if desired < current {
+		return errors.New(ErrVolumeShrinking)
 	}
 
-	if a.size == nil {
-		return nil
-	}
-
-	s := util.ConvertToBytes(a.state.Capacity.Value, a.state.Capacity.Unit)
-	r := util.ConvertToBytes(a.size.Value, a.size.Unit)
-
-	if r > s {
-		return a.StorageVolResize(*a.id, r, 0)
+	if desired > current {
+		return a.StorageVolResize(*a.id, desired, 0)
 	}
 
 	return nil
 }
 
 func (a *VolumeAction) Delete() error {
-	if a.id == nil {
-		return nil
-	}
 	return a.StorageVolDelete(*a.id, libvirt.StorageVolDeleteNormal)
+}
+
+func (a *VolumeAction) CleanupSource() error {
+	if err := a.source.Close(); err != nil {
+		return err
+	}
+	return os.Remove(a.source.Name())
 }

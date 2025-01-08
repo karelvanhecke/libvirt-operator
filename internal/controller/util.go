@@ -17,12 +17,22 @@ limitations under the License.
 package controller
 
 import (
+	"errors"
+
 	"github.com/digitalocean/go-libvirt"
 	"github.com/google/uuid"
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 )
 
+const (
+	ErrIDNotSet = "id is not set"
+)
+
 func resolvePoolIdentifier(id *v1alpha1.LibvirtIdentifierWithUUID) (libvirt.StoragePool, error) {
+	if id == nil {
+		return libvirt.StoragePool{}, errors.New(ErrIDNotSet)
+	}
+
 	u, err := uuid.Parse(id.UUID)
 	if err != nil {
 		return libvirt.StoragePool{}, err

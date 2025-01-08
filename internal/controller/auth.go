@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	ConditionMessageAuthInUseByHost = "auth is currently in use by host"
+	CondMsgAuthInUseByHost = "auth is currently in use by host"
 )
 
 type AuthReconciler struct {
@@ -54,8 +54,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	entry, found := r.AuthStore.Lookup(auth.UID)
 
 	if auth.DeletionTimestamp.IsZero() {
-		if !controllerutil.ContainsFinalizer(auth, Finalizer) {
-			controllerutil.AddFinalizer(auth, Finalizer)
+		if controllerutil.AddFinalizer(auth, Finalizer) {
 			if err := r.Update(ctx, auth); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -72,14 +71,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			if len(hosts.Items) > 0 {
-				meta.SetStatusCondition(&auth.Status.Conditions, metav1.Condition{
-					Type:               ConditionTypeDeletionProbihibited,
-					Status:             metav1.ConditionTrue,
-					Message:            ConditionMessageAuthInUseByHost,
-					Reason:             ConditionReasonInUse,
-					LastTransitionTime: metav1.Now(),
-				})
-				if err := r.Status().Update(ctx, auth); err != nil {
+				if err := r.setStatusCondition(ctx, auth, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgAuthInUseByHost, CondReasonInUse); err != nil {
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{Requeue: true}, nil
@@ -88,16 +80,15 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			r.AuthStore.Deregister(ctx, auth.UID)
 
 			controllerutil.RemoveFinalizer(auth, Finalizer)
-			if err := r.Update(ctx, auth); err != nil {
-				return ctrl.Result{}, err
-			}
+			err = r.Update(ctx, auth)
+			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 	secret := &corev1.Secret{}
 
 	if err := r.Get(ctx, types.NamespacedName{Name: auth.Spec.SecretRef.Name, Namespace: auth.Namespace}, secret); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	combinedGeneration := auth.Generation + secret.Generation
@@ -155,6 +146,9 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *AuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Auth{}).Watches(&corev1.Secret{},
 		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
+			if !o.GetDeletionTimestamp().IsZero() {
+				return nil
+			}
 			labelSelector, err := labels.NewRequirement(LabelKeySecret, selection.Equals, []string{o.GetName()})
 			if err != nil {
 				return []reconcile.Request{}
@@ -174,4 +168,15 @@ func (r *AuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}
 			return queued
 		})).Complete(r)
+}
+
+func (r *AuthReconciler) setStatusCondition(ctx context.Context, auth *v1alpha1.Auth, cType string, status metav1.ConditionStatus, msg string, reason string) error {
+	meta.SetStatusCondition(&auth.Status.Conditions, metav1.Condition{
+		Type:               cType,
+		Status:             status,
+		Message:            msg,
+		Reason:             reason,
+		LastTransitionTime: metav1.Now(),
+	})
+	return r.Status().Update(ctx, auth)
 }

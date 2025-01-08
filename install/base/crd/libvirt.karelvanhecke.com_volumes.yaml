@@ -121,11 +121,14 @@ spec:
             required:
             - format
             - poolRef
-            - size
             type: object
             x-kubernetes-validations:
             - message: source and backingstore can not be defined at the same time
               rule: 'has(self.source) ? !has(self.backingStoreRef) : true'
+            - message: size can only be omitted when a source or backing store or
+                defined
+              rule: '!has(self.size) ? has(self.backingStoreRef) || has(self.source)
+                : true'
           status:
             properties:
               conditions:
