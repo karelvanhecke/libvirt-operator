@@ -120,12 +120,12 @@ func (s *AuthStore) Deregister(ctx context.Context, uid types.UID) {
 	defer s.mu.Unlock()
 
 	entry, found := s.entries[uid]
-	link := entry.GetPath()
-	target, err := filepath.EvalSymlinks(link)
-	if err != nil {
-		ctrl.LoggerFrom(ctx).Error(err, "failed to resolve link", "auth", uid)
-	}
 	if found {
+		link := entry.GetPath()
+		target, err := filepath.EvalSymlinks(link)
+		if err != nil {
+			ctrl.LoggerFrom(ctx).Error(err, "failed to resolve link", "auth", uid)
+		}
 		delete(s.entries, uid)
 		if err := os.Remove(link); err != nil {
 			ctrl.LoggerFrom(ctx).Error(err, "failed to cleanup auth link", "auth", uid)
