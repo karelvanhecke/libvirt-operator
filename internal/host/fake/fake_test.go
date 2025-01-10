@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/digitalocean/go-libvirt"
-	"github.com/google/uuid"
 	"github.com/karelvanhecke/libvirt-operator/internal/host/fake"
 	"libvirt.org/go/libvirtxml"
 )
@@ -694,46 +693,6 @@ func TestNetworkLookupByName(t *testing.T) {
 		t.Fail()
 	}
 	if n.Name != name {
-		t.Fail()
-	}
-}
-
-func TestNetworkLookupByUUID(t *testing.T) {
-	f := fake.New()
-
-	u, err := uuid.NewRandom()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.WithNetwork(&libvirtxml.Network{UUID: u.String()}, 0)
-
-	n, err := f.NetworkLookupByUUID(libvirt.UUID(u))
-	if err != nil {
-		t.Fail()
-	}
-
-	if n.UUID != libvirt.UUID(u) {
-		t.Fail()
-	}
-}
-
-func TestStoragePoolLookupByUUID(t *testing.T) {
-	f := fake.New()
-
-	u, err := uuid.NewRandom()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.WithPool(&libvirtxml.StoragePool{UUID: u.String()}, 0, nil)
-
-	p, err := f.StoragePoolLookupByUUID(libvirt.UUID(u))
-	if err != nil {
-		t.Fail()
-	}
-
-	if p.UUID != libvirt.UUID(u) {
 		t.Fail()
 	}
 }

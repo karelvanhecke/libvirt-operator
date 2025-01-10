@@ -21,15 +21,15 @@ import (
 )
 
 type NetworkSpec struct {
-	LibvirtLookup `json:",inline"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// +kubebuilder:validation:Required
+	HostRef ResourceRef `json:"hostRef"`
 }
 
 // +kubebuilder:validation:Optional
 type NetworkStatus struct {
-	Identifier *LibvirtIdentifierWithUUID `json:"identifier,omitempty"`
-	Active     *bool                      `json:"active,omitempty"`
-	LastUpdate *metav1.Time               `json:"lastUpdate,omitempty"`
-	Conditions []metav1.Condition         `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 // +kubebuilder:object:root=true

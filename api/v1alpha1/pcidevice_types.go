@@ -37,10 +37,7 @@ type PCIDeviceAddress struct {
 
 // +kubebuilder:validation:Optional
 type PCIDeviceStatus struct {
-	Identifier *LibvirtIdentifier `json:"identifier,omitempty"`
-	Active     *bool              `json:"active,omitempty"`
 	Address    *PCIDeviceAddress  `json:"address,omitempty"`
-	LastUpdate *metav1.Time       `json:"lastUpdate,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

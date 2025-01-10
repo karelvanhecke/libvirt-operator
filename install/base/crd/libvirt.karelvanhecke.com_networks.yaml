@@ -47,18 +47,12 @@ spec:
                 type: object
               name:
                 type: string
-              uuid:
-                type: string
             required:
             - hostRef
+            - name
             type: object
-            x-kubernetes-validations:
-            - message: at least the name or uuid need to be provided
-              rule: '!has(self.name) ? has(self.uuid) : true'
           status:
             properties:
-              active:
-                type: boolean
               conditions:
                 items:
                   description: Condition contains details for one aspect of the current
@@ -115,20 +109,6 @@ spec:
                   - type
                   type: object
                 type: array
-              identifier:
-                properties:
-                  name:
-                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
-                    type: string
-                  uuid:
-                    type: string
-                required:
-                - name
-                - uuid
-                type: object
-              lastUpdate:
-                format: date-time
-                type: string
             type: object
         type: object
     served: true

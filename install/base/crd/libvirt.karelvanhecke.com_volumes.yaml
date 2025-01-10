@@ -123,12 +123,14 @@ spec:
             - poolRef
             type: object
             x-kubernetes-validations:
-            - message: source and backingstore can not be defined at the same time
+            - message: source and backing store can not be defined at the same time
               rule: 'has(self.source) ? !has(self.backingStoreRef) : true'
             - message: size can only be omitted when a source or backing store or
                 defined
               rule: '!has(self.size) ? has(self.backingStoreRef) || has(self.source)
                 : true'
+            - message: backing store can only be used with the qcow2 format
+              rule: 'has(self.backingStoreRef) ? self.format == ''qcow2'' : true'
           status:
             properties:
               conditions:
@@ -187,18 +189,15 @@ spec:
                   - type
                   type: object
                 type: array
-              identifier:
+              info:
                 properties:
-                  key:
+                  targetPath:
                     type: string
-                  name:
-                    type: string
-                  pool:
+                  type:
                     type: string
                 required:
-                - key
-                - name
-                - pool
+                - targetPath
+                - type
                 type: object
             type: object
         type: object

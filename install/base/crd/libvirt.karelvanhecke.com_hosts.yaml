@@ -63,9 +63,6 @@ spec:
                   cpu:
                     format: int32
                     type: integer
-                  lastUpdate:
-                    format: date-time
-                    type: string
                   memory:
                     properties:
                       free:
@@ -80,7 +77,6 @@ spec:
                     type: object
                 required:
                 - cpu
-                - lastUpdate
                 - memory
                 type: object
               conditions:

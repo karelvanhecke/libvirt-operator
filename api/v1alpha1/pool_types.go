@@ -21,7 +21,10 @@ import (
 )
 
 type PoolSpec struct {
-	LibvirtLookup `json:",inline"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// +kubebuilder:validation:Required
+	HostRef ResourceRef `json:"hostRef"`
 }
 
 type PoolCapacity struct {
@@ -31,16 +34,12 @@ type PoolCapacity struct {
 	Allocation int64 `json:"allocation"`
 	// +kubebuilder:validation:Required
 	Available int64 `json:"available"`
-	// +kubebuilder:validation:Required
-	LastUpdate metav1.Time `json:"lastUpdate"`
 }
 
 // +kubebuilder:validation:Optional
 type PoolStatus struct {
-	Identifier *LibvirtIdentifierWithUUID `json:"identifier,omitempty"`
-	Active     *bool                      `json:"active,omitempty"`
-	Capacity   *PoolCapacity              `json:"capacity,omitempty"`
-	Conditions []metav1.Condition         `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	Capacity   *PoolCapacity      `json:"capacity,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 // +kubebuilder:object:root=true

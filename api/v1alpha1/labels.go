@@ -14,27 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
-
-import "time"
-
-// Common condition messages
-const (
-	conditionCreationSucceeded  = "Creation succeeded"
-	conditionProbeCompleted     = "Probe completed"
-	conditionHostClientNotReady = "Host client is not ready"
-	conditionPoolNotReady       = "Pool is not ready"
-)
-
-// Auth file names
-const (
-	privateKey = "privatekey"
-	knownHosts = "known_hosts"
-	clientCert = "clientcert.pem"
-	clientKey  = "clientkey.pem"
-	caCert     = "cacert.pem"
-)
+package v1alpha1
 
 const (
-	dataRefreshInterval = 1 * time.Minute
+	SecretLabel    = "libvirt.karelvanhecke.com/secret" // #nosec G101
+	AuthLabel      = "libvirt.karelvanhecke.com/auth"
+	HostLabel      = "libvirt.karelvanhecke.com/host"
+	PoolLabel      = "libvirt.karelvanhecke.com/pool"
+	VolumeLabel    = "libvirt.karelvanhecke.com/volume"
+	CloudInitLabel = "libvirt.karelvanhecke.com/cloudinit"
+	NetworkLabel   = "libvirt.karelvanhecke.com/network"
+	PCIDeviceLabel = "libvirt.karelvanhecke.com/pcidevice"
 )

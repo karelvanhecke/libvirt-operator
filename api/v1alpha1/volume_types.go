@@ -41,8 +41,9 @@ type VolumeSource struct {
 	Checksum *string `json:"checksum,omitempty"`
 }
 
-// +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backingstore can not be defined at the same time"
+// +kubebuilder:validation:XValidation:rule="has(self.source) ? !has(self.backingStoreRef) : true",message="source and backing store can not be defined at the same time"
 // +kubebuilder:validation:XValidation:rule="!has(self.size) ? has(self.backingStoreRef) || has(self.source) : true",message="size can only be omitted when a source or backing store or defined"
+// +kubebuilder:validation:XValidation:rule="has(self.backingStoreRef) ? self.format == 'qcow2' : true",message="backing store can only be used with the qcow2 format"
 type VolumeSpec struct {
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change format of existing volume"
 	// +kubebuilder:validation:Enum=qcow2;raw
@@ -65,18 +66,14 @@ type VolumeSpec struct {
 	BackingStoreRef *ResourceRef `json:"backingStoreRef,omitempty"`
 }
 
-type VolumeIdentifier struct {
-	// +kubebuilder:validation:Required
-	Pool string `json:"pool"`
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
-	// +kubebuilder:validation:Required
-	Key string `json:"key"`
+type VolumeInfo struct {
+	Type       string `json:"type"`
+	TargetPath string `json:"targetPath"`
 }
 
 // +kubebuilder:validation:Optional
 type VolumeStatus struct {
-	Identifier *VolumeIdentifier  `json:"identifier,omitempty"`
+	Info       *VolumeInfo        `json:"info,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

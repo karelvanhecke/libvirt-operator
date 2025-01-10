@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ConvertToBytes(value uint64, unit string) uint64 {
@@ -78,4 +79,19 @@ func Marshal(buffer *bytes.Buffer, data any) ([]byte, error) {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+func SetLabel(meta *metav1.ObjectMeta, key string, value string) (changed bool) {
+	if meta.Labels == nil {
+		meta.Labels = map[string]string{key: value}
+		return true
+	}
+	v, ok := meta.Labels[key]
+	if ok {
+		if v == value {
+			return false
+		}
+	}
+	meta.Labels[key] = value
+	return true
 }

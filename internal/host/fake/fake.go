@@ -23,7 +23,6 @@ import (
 
 	"github.com/ARM-software/golang-utils/utils/safecast"
 	"github.com/digitalocean/go-libvirt"
-	"github.com/google/uuid"
 	"libvirt.org/go/libvirtxml"
 )
 
@@ -441,35 +440,6 @@ func (f *Fake) NetworkLookupByName(Name string) (rNet libvirt.Network, err error
 	}
 
 	return libvirt.Network{Name: n.xml.Name}, nil
-}
-func (f *Fake) NetworkLookupByUUID(UUID libvirt.UUID) (rNet libvirt.Network, err error) {
-	u, err := uuid.FromBytes(UUID[:])
-	if err != nil {
-		return libvirt.Network{}, err
-	}
-
-	i := slices.IndexFunc(f.networks, func(n *Network) bool { return n.xml.UUID == u.String() })
-	if i == -1 {
-		return libvirt.Network{}, libvirt.Error{Code: uint32(libvirt.ErrNoNetwork), Message: ErrNetworkNotExist}
-	}
-
-	n := f.networks[i]
-	return libvirt.Network{Name: n.xml.Name, UUID: UUID}, nil
-}
-
-func (f *Fake) StoragePoolLookupByUUID(UUID libvirt.UUID) (rPool libvirt.StoragePool, err error) {
-	u, err := uuid.FromBytes(UUID[:])
-	if err != nil {
-		return libvirt.StoragePool{}, err
-	}
-
-	i := slices.IndexFunc(f.pools, func(n *Pool) bool { return n.xml.UUID == u.String() })
-	if i == -1 {
-		return libvirt.StoragePool{}, libvirt.Error{Code: uint32(libvirt.ErrNoStoragePool), Message: ErrPoolNotExist}
-	}
-
-	p := f.pools[i]
-	return libvirt.StoragePool{Name: p.xml.Name, UUID: UUID}, nil
 }
 
 func (f *Fake) NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err error) {

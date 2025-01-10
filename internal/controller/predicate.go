@@ -16,25 +16,18 @@ limitations under the License.
 
 package controller
 
-import "time"
-
-// Common condition messages
-const (
-	conditionCreationSucceeded  = "Creation succeeded"
-	conditionProbeCompleted     = "Probe completed"
-	conditionHostClientNotReady = "Host client is not ready"
-	conditionPoolNotReady       = "Pool is not ready"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// Auth file names
-const (
-	privateKey = "privatekey"
-	knownHosts = "known_hosts"
-	clientCert = "clientcert.pem"
-	clientKey  = "clientkey.pem"
-	caCert     = "cacert.pem"
-)
-
-const (
-	dataRefreshInterval = 1 * time.Minute
+var (
+	watchPredicate = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
 )
