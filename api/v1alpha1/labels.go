@@ -17,12 +17,13 @@ limitations under the License.
 package v1alpha1
 
 const (
-	SecretLabel    = "libvirt.karelvanhecke.com/secret" // #nosec G101
-	AuthLabel      = "libvirt.karelvanhecke.com/auth"
-	HostLabel      = "libvirt.karelvanhecke.com/host"
-	PoolLabel      = "libvirt.karelvanhecke.com/pool"
-	VolumeLabel    = "libvirt.karelvanhecke.com/volume"
-	CloudInitLabel = "libvirt.karelvanhecke.com/cloudinit"
-	NetworkLabel   = "libvirt.karelvanhecke.com/network"
-	PCIDeviceLabel = "libvirt.karelvanhecke.com/pcidevice"
+	SecretLabel               = "libvirt.karelvanhecke.com/secret" // #nosec G101
+	AuthLabel                 = "libvirt.karelvanhecke.com/auth"
+	HostLabel                 = "libvirt.karelvanhecke.com/host"
+	PoolLabel                 = "libvirt.karelvanhecke.com/pool"
+	VolumeLabel               = "libvirt.karelvanhecke.com/volume"
+	CloudInitLabel            = "libvirt.karelvanhecke.com/cloudinit"
+	InterfaceLabelPrefix      = "interface.libvirt.karelvanhecke.com"
+	PCIPassthroughLabelPrefix = "pcipassthrough.libvirt.karelvanhecke.com"
+	DiskLabelPrefix           = "disk.libvirt.karelvanhecke.com"
 )

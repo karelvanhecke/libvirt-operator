@@ -20,22 +20,43 @@ import (
 	"github.com/digitalocean/go-libvirt"
 	"github.com/karelvanhecke/libvirt-operator/internal/host"
 	"github.com/karelvanhecke/libvirt-operator/internal/util"
+	"libvirt.org/go/libvirtxml"
 )
 
-type NodeProbe struct {
-	cpu         int32
+type HostProbe struct {
+	arch        string
+	cpus        uint
 	memoryTotal uint64
 	memoryFree  uint64
+	numa        bool
 }
 
-func NewNodeProbe(client host.Client) (*NodeProbe, error) {
-	p := &NodeProbe{}
+func NewHostProbe(client host.Client) (*HostProbe, error) {
+	p := &HostProbe{}
 
-	_, _, cpu, _, _, _, _, _, err := client.NodeGetInfo()
+	capsData, err := client.Capabilities()
 	if err != nil {
 		return nil, err
 	}
-	p.cpu = cpu
+	caps := &libvirtxml.Caps{}
+	if err := caps.Unmarshal(string(capsData)); err != nil {
+		return nil, err
+	}
+	if cpu := caps.Host.CPU; cpu != nil {
+		p.arch = cpu.Arch
+	} else {
+		p.arch = "unknown"
+	}
+	if topo := caps.Host.NUMA; topo != nil {
+		if cells := topo.Cells; cells != nil {
+			p.numa = cells.Num > 1
+			for _, c := range cells.Cells {
+				if cpus := c.CPUS; cpus != nil {
+					p.cpus += cpus.Num
+				}
+			}
+		}
+	}
 
 	memStats, _, err := client.NodeGetMemoryStats(4, int32(libvirt.NodeMemoryStatsAllCells), 0)
 	if err != nil {
@@ -58,14 +79,22 @@ func NewNodeProbe(client host.Client) (*NodeProbe, error) {
 	return p, nil
 }
 
-func (p *NodeProbe) CPU() int32 {
-	return p.cpu
+func (p *HostProbe) CPUS() uint {
+	return p.cpus
 }
 
-func (p *NodeProbe) MemoryTotal() uint64 {
+func (p *HostProbe) MemoryTotal() uint64 {
 	return p.memoryTotal
 }
 
-func (p *NodeProbe) MemoryFree() uint64 {
+func (p *HostProbe) MemoryFree() uint64 {
 	return p.memoryFree
+}
+
+func (p *HostProbe) Arch() string {
+	return p.arch
+}
+
+func (p *HostProbe) NUMA() bool {
+	return p.numa
 }

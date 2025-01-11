@@ -495,84 +495,6 @@ func TestDomainGetXMLDesc(t *testing.T) {
 	}
 }
 
-func TestConnectListAllNodeDevices(t *testing.T) {
-	f := fake.New()
-
-	name := "fake-nodedev"
-
-	f.WithNodeDev(&libvirtxml.NodeDevice{Name: name}, 1)
-
-	devs, ret, err := f.ConnectListAllNodeDevices(0, 0)
-	if err != nil {
-		t.Fail()
-	}
-	if ret != 1 {
-		t.Fail()
-	}
-	if devs[0].Name != name {
-		t.Fail()
-	}
-}
-
-func TestConnectListAllNetworks(t *testing.T) {
-	f := fake.New()
-
-	name := "fake-network"
-
-	f.WithNetwork(&libvirtxml.Network{Name: name}, 1)
-
-	nets, ret, err := f.ConnectListAllNetworks(0, 0)
-	if err != nil {
-		t.Fail()
-	}
-	if ret != 1 {
-		t.Fail()
-	}
-	if nets[0].Name != name {
-		t.Fail()
-	}
-}
-
-func TestConnectListAllStoragePools(t *testing.T) {
-	f := fake.New()
-
-	name := "fake-pool"
-
-	f.WithPool(&libvirtxml.StoragePool{Name: name}, 1, nil)
-
-	nets, ret, err := f.ConnectListAllStoragePools(0, 0)
-	if err != nil {
-		t.Fail()
-	}
-	if ret != 1 {
-		t.Fail()
-	}
-	if nets[0].Name != name {
-		t.Fail()
-	}
-}
-
-func TestNetworkGetXMLDesc(t *testing.T) {
-	f := fake.New()
-
-	name := "fake-network"
-
-	f.WithNetwork(&libvirtxml.Network{Name: name}, 1)
-
-	xml, err := f.NetworkGetXMLDesc(libvirt.Network{Name: name}, 0)
-	if err != nil {
-		t.Fail()
-	}
-
-	net := &libvirtxml.Network{}
-	if err := net.Unmarshal(xml); err != nil {
-		t.Fail()
-	}
-	if net.Name != name {
-		t.Fail()
-	}
-}
-
 func TestNodeDeviceGetXMLDesc(t *testing.T) {
 	f := fake.New()
 
@@ -590,27 +512,6 @@ func TestNodeDeviceGetXMLDesc(t *testing.T) {
 		t.Fail()
 	}
 	if dev.Name != name {
-		t.Fail()
-	}
-}
-
-func TestStoragePoolGetXMLDesc(t *testing.T) {
-	f := fake.New()
-
-	name := "fake-pool"
-
-	f.WithPool(&libvirtxml.StoragePool{Name: name}, 1, nil)
-
-	xml, err := f.StoragePoolGetXMLDesc(libvirt.StoragePool{Name: name}, 0)
-	if err != nil {
-		t.Fail()
-	}
-
-	pool := &libvirtxml.StoragePool{}
-	if err := pool.Unmarshal(xml); err != nil {
-		t.Fail()
-	}
-	if pool.Name != name {
 		t.Fail()
 	}
 }

@@ -66,14 +66,10 @@ type VolumeSpec struct {
 	BackingStoreRef *ResourceRef `json:"backingStoreRef,omitempty"`
 }
 
-type VolumeInfo struct {
-	Type       string `json:"type"`
-	TargetPath string `json:"targetPath"`
-}
-
 // +kubebuilder:validation:Optional
 type VolumeStatus struct {
-	Info       *VolumeInfo        `json:"info,omitempty"`
+	Pool       string             `json:"pool,omitempty"`
+	Host       string             `json:"host,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

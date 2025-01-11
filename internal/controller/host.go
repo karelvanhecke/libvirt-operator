@@ -79,8 +79,12 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			if err := r.List(ctx, pciDevices, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
 				return ctrl.Result{}, err
 			}
+			domains := &v1alpha1.DomainList{}
+			if err := r.List(ctx, domains, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+				return ctrl.Result{}, err
+			}
 
-			if len(pools.Items)+len(networks.Items)+len(pciDevices.Items) > 0 {
+			if len(pools.Items)+len(networks.Items)+len(pciDevices.Items)+len(domains.Items) > 0 {
 				if err := r.setStatusCondition(ctx, host, v1alpha1.ConditionDeletionPrevented, metav1.ConditionTrue, "host is in use by another resource", v1alpha1.ConditionInUse); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -205,10 +209,10 @@ func (r *HostReconciler) probe(ctx context.Context, host *v1alpha1.Host, hostEnt
 		return err
 	}
 
-	hClient, end := hostEntry.Session()
+	hostClient, end := hostEntry.Session()
 	defer end()
 
-	probe, err := probe.NewNodeProbe(hClient)
+	probe, err := probe.NewHostProbe(hostClient)
 	if err != nil {
 		if err := r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionFalse, "Probe could not be completed", v1alpha1.ConditionError); err != nil {
 			return err
@@ -216,12 +220,14 @@ func (r *HostReconciler) probe(ctx context.Context, host *v1alpha1.Host, hostEnt
 		return err
 	}
 
-	host.Status.Capacity = &v1alpha1.HostCapacity{
-		CPU: probe.CPU(),
+	host.Status.Capacity = &v1alpha1.HostCapability{
+		Arch: probe.Arch(),
+		CPUS: safecast.ToInt32(probe.CPUS()),
 		Memory: v1alpha1.HostMemory{
 			Total: safecast.ToInt64(probe.MemoryTotal()),
 			Free:  safecast.ToInt64(probe.MemoryFree()),
 		},
+		NUMA: probe.NUMA(),
 	}
 
 	return r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionTrue, conditionProbeCompleted, v1alpha1.ConditionCompleted)

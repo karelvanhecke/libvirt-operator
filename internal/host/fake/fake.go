@@ -45,7 +45,7 @@ type Memory struct {
 }
 
 type Fake struct {
-	cpu            int32
+	capabilities   *libvirtxml.Caps
 	memory         Memory
 	connectFail    bool
 	disconnectFail bool
@@ -77,6 +77,15 @@ func (f *Fake) WithPool(pool *libvirtxml.StoragePool, state int32, volumes []*li
 		volumes: volumes,
 	}
 	f.pools = append(f.pools, p)
+}
+
+func (f *Fake) WithCapbilities(caps *libvirtxml.Caps) {
+	f.capabilities = caps
+}
+
+func (f *Fake) Capabilities() ([]byte, error) {
+	caps, err := f.capabilities.Marshal()
+	return []byte(caps), err
 }
 
 func (f *Fake) Connect() error {
@@ -136,6 +145,20 @@ func (f *Fake) StorageVolLookupByName(pool libvirt.StoragePool, name string) (rV
 		Name: v.Name,
 		Key:  v.Key,
 	}, nil
+}
+
+func (f *Fake) StorageVolLookupByKey(key string) (rVol libvirt.StorageVol, err error) {
+	for _, pool := range f.pools {
+		i := slices.IndexFunc(pool.volumes, func(v *libvirtxml.StorageVolume) bool { return v.Key == key })
+		if i != -1 {
+			volume := pool.volumes[i]
+			return libvirt.StorageVol{Name: volume.Name, Pool: pool.xml.Name, Key: volume.Key}, nil
+		}
+	}
+	return libvirt.StorageVol{}, libvirt.Error{
+		Code:    uint32(libvirt.ErrNoStorageVol),
+		Message: ErrVolumeNotExist,
+	}
 }
 
 func (f *Fake) StorageVolGetXMLDesc(vol libvirt.StorageVol, flags uint32) (rXML string, err error) {
@@ -304,6 +327,11 @@ func (f *Fake) DomainShutdown(Dom libvirt.Domain) (err error) {
 	return nil
 }
 
+func (f *Fake) DomainUndefineFlags(Dom libvirt.Domain, Flags libvirt.DomainUndefineFlagsValues) (err error) {
+	f.domains = slices.DeleteFunc(f.domains, func(d *Domain) bool { return d.xml.Name == Dom.Name })
+	return
+}
+
 func (f *Fake) getDomainByName(name string) (*Domain, error) {
 	i := slices.IndexFunc(f.domains, func(domain *Domain) bool { return domain.xml.Name == name })
 	if i == -1 {
@@ -321,39 +349,6 @@ func (f *Fake) WithNodeDev(nodedev *libvirtxml.NodeDevice, state int32) {
 
 func (f *Fake) WithNetwork(network *libvirtxml.Network, state int32) {
 	f.networks = append(f.networks, &Network{xml: network, state: 1})
-}
-
-func (f *Fake) ConnectListAllNodeDevices(NeedResults int32, Flags uint32) (rDevices []libvirt.NodeDevice, rRet uint32, err error) {
-	for _, nodedev := range f.nodedevs {
-		rDevices = append(rDevices, libvirt.NodeDevice{
-			Name: nodedev.xml.Name,
-		})
-		rRet += 1
-	}
-
-	return
-}
-
-func (f *Fake) ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error) {
-	for _, network := range f.networks {
-		rNets = append(rNets, libvirt.Network{
-			Name: network.xml.Name,
-		})
-		rRet += 1
-	}
-
-	return
-}
-
-func (f *Fake) ConnectListAllStoragePools(NeedResults int32, Flags libvirt.ConnectListAllStoragePoolsFlags) (rPools []libvirt.StoragePool, rRet uint32, err error) {
-	for _, pool := range f.pools {
-		rPools = append(rPools, libvirt.StoragePool{
-			Name: pool.xml.Name,
-		})
-		rRet += 1
-	}
-
-	return
 }
 
 func (f *Fake) getNetworkByName(name string) (*Network, error) {
@@ -374,15 +369,6 @@ func (f *Fake) getNodeDeviceByName(name string) (*Nodedev, error) {
 	return f.nodedevs[i], nil
 }
 
-func (f *Fake) NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error) {
-	n, err := f.getNetworkByName(Net.Name)
-	if err != nil {
-		return "", err
-	}
-
-	return n.xml.Marshal()
-}
-
 func (f *Fake) NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error) {
 	n, err := f.getNodeDeviceByName(Name)
 	if err != nil {
@@ -390,15 +376,6 @@ func (f *Fake) NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err
 	}
 
 	return n.xml.Marshal()
-}
-
-func (f *Fake) StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error) {
-	p, err := f.getPoolByName(Pool.Name)
-	if err != nil {
-		return "", err
-	}
-
-	return p.xml.Marshal()
 }
 
 func (f *Fake) NetworkIsActive(Net libvirt.Network) (rActive int32, err error) {
@@ -451,8 +428,7 @@ func (f *Fake) NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err
 	return libvirt.NodeDevice{Name: d.xml.Name}, nil
 }
 
-func (f *Fake) WithCapacity(cpu int32, memory Memory) {
-	f.cpu = cpu
+func (f *Fake) WithMemoryStats(memory Memory) {
 	f.memory = memory
 }
 
@@ -461,8 +437,4 @@ func (f *Fake) NodeGetMemoryStats(Nparams int32, CellNum int32, Flags uint32) (r
 		{Field: libvirt.NodeMemoryStatsTotal, Value: f.memory.Total},
 		{Field: libvirt.NodeMemoryStatsFree, Value: f.memory.Free},
 	}, 2, nil
-}
-
-func (f *Fake) NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error) {
-	return [32]int8{}, f.memory.Total, f.cpu, 0, 0, 0, 0, 0, nil
 }

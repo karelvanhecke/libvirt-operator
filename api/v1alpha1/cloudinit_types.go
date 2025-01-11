@@ -467,7 +467,8 @@ type CloudInitSpec struct {
 
 // +kubebuilder:validation:Optional
 type CloudInitStatus struct {
-	Info       *VolumeInfo        `json:"info,omitempty"`
+	Pool       string             `json:"pool,omitempty"`
+	Host       string             `json:"host,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

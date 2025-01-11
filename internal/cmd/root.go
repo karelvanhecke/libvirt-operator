@@ -72,6 +72,9 @@ func NewOperatorCmd() *cobra.Command {
 	return cmd
 }
 
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=domains,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=domains/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=domains/finalizers,verbs=update
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=pcidevices/finalizers,verbs=update
@@ -225,6 +228,14 @@ func runOperator() {
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "failed to setup volume controller with manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.DomainReconciler{
+		Client:    mgr.GetClient(),
+		HostStore: hostStore,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup domain controller with manager")
 		os.Exit(1)
 	}
 

@@ -31,6 +31,8 @@ import (
 	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -90,6 +92,8 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	exists := action.State()
+
 	if ci.DeletionTimestamp.IsZero() {
 		if controllerutil.AddFinalizer(ci, v1alpha1.Finalizer) {
 			if err := r.Update(ctx, ci); err != nil {
@@ -98,7 +102,21 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(ci, v1alpha1.Finalizer) {
-			if action.State() {
+			if exists {
+				labelSelector, err := labels.NewRequirement(v1alpha1.CloudInitLabel, selection.Equals, []string{ci.Name})
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				domains := &v1alpha1.DomainList{}
+				if err := r.List(ctx, domains, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+					return ctrl.Result{}, err
+				}
+				if len(domains.Items) > 0 {
+					if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionDeletionPrevented, metav1.ConditionTrue, "cloud-init is currently in use by domain", v1alpha1.ConditionInUse); err != nil {
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{Requeue: true}, nil
+				}
 				if err := action.Delete(); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -110,7 +128,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if action.State() {
+	if exists {
 		if !meta.IsStatusConditionTrue(ci.Status.Conditions, v1alpha1.ConditionReady) {
 			if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 				return ctrl.Result{}, err
@@ -164,10 +182,8 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	ci.Status.Info = &v1alpha1.VolumeInfo{
-		Type:       action.Type(),
-		TargetPath: action.TargetPath(),
-	}
+	ci.Status.Pool = pool.Spec.Name
+	ci.Status.Host = pool.Spec.HostRef.Name
 
 	if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 		return ctrl.Result{}, err
