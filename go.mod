@@ -3,7 +3,7 @@ module github.com/karelvanhecke/libvirt-operator
 go 1.23.0
 
 require (
-	github.com/ARM-software/golang-utils/utils v1.77.1
+	github.com/ARM-software/golang-utils/utils v1.79.0
 	github.com/digitalocean/go-libvirt v0.0.0-20241216201552-9fbdb61a21af
 	github.com/diskfs/go-diskfs v1.5.0
 	github.com/go-logr/logr v1.4.2
