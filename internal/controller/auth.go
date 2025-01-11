@@ -22,6 +22,7 @@ import (
 
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,14 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-)
-
-const (
-	CondMsgAuthInUseByHost = "auth is currently in use by host"
 )
 
 type AuthReconciler struct {
@@ -54,14 +53,14 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	entry, found := r.AuthStore.Lookup(auth.UID)
 
 	if auth.DeletionTimestamp.IsZero() {
-		if controllerutil.AddFinalizer(auth, Finalizer) {
+		if controllerutil.AddFinalizer(auth, v1alpha1.Finalizer) {
 			if err := r.Update(ctx, auth); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		if controllerutil.ContainsFinalizer(auth, Finalizer) {
-			labelSelector, err := labels.NewRequirement(LabelKeyAuth, selection.Equals, []string{auth.Name})
+		if controllerutil.ContainsFinalizer(auth, v1alpha1.Finalizer) {
+			labelSelector, err := labels.NewRequirement(v1alpha1.AuthLabel, selection.Equals, []string{auth.Name})
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -71,7 +70,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			if len(hosts.Items) > 0 {
-				if err := r.setStatusCondition(ctx, auth, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgAuthInUseByHost, CondReasonInUse); err != nil {
+				if err := r.setStatusCondition(ctx, auth, v1alpha1.ConditionDeletionPrevented, metav1.ConditionTrue, "auth is currently in use by host", v1alpha1.ConditionInUse); err != nil {
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{Requeue: true}, nil
@@ -79,7 +78,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 			r.AuthStore.Deregister(ctx, auth.UID)
 
-			controllerutil.RemoveFinalizer(auth, Finalizer)
+			controllerutil.RemoveFinalizer(auth, v1alpha1.Finalizer)
 			err = r.Update(ctx, auth)
 			return ctrl.Result{}, err
 		}
@@ -105,10 +104,10 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if secret.Type != corev1.SecretTypeSSHAuth {
 			return ctrl.Result{}, fmt.Errorf("ssh auth requires a secret of type: %s", corev1.SecretTypeSSHAuth)
 		}
-		files = append(files, store.NewFile(PrivateKey, secret.Data["ssh-privatekey"]))
+		files = append(files, store.NewFile(privateKey, secret.Data["ssh-privatekey"]))
 
 		if auth.Spec.Verify == nil || *auth.Spec.Verify {
-			files = append(files, store.NewFile(KnownHosts, []byte(*auth.Spec.KnownHosts)))
+			files = append(files, store.NewFile(knownHosts, []byte(*auth.Spec.KnownHosts)))
 		}
 	case v1alpha1.TLSAuth:
 		if secret.Type != corev1.SecretTypeTLS {
@@ -116,11 +115,11 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		files = append(files,
-			store.NewFile(ClientCert, secret.Data["tls.crt"]),
-			store.NewFile(ClientKey, secret.Data["tls.key"]))
+			store.NewFile(clientCert, secret.Data["tls.crt"]),
+			store.NewFile(clientKey, secret.Data["tls.key"]))
 
 		if auth.Spec.Verify == nil || *auth.Spec.Verify {
-			files = append(files, store.NewFile(CaCert, []byte(*auth.Spec.Ca)))
+			files = append(files, store.NewFile(caCert, []byte(*auth.Spec.Ca)))
 		}
 	default:
 		return ctrl.Result{}, fmt.Errorf("unsupported auth type: %s", auth.Spec.Type)
@@ -130,26 +129,17 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if auth.Labels == nil {
-		auth.Labels = make(map[string]string)
-	}
-	if auth.Labels[LabelKeySecret] != secret.Name {
-		auth.Labels[LabelKeySecret] = secret.Name
-		if err := r.Update(ctx, auth); err != nil {
-			return ctrl.Result{}, err
-		}
+	if util.SetLabel(&auth.ObjectMeta, v1alpha1.SecretLabel, secret.Name) {
+		return ctrl.Result{}, r.Update(ctx, auth)
 	}
 
 	return ctrl.Result{}, nil
 }
 
 func (r *AuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Auth{}).Watches(&corev1.Secret{},
+	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Auth{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).Watches(&corev1.Secret{},
 		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, o client.Object) []reconcile.Request {
-			if !o.GetDeletionTimestamp().IsZero() {
-				return nil
-			}
-			labelSelector, err := labels.NewRequirement(LabelKeySecret, selection.Equals, []string{o.GetName()})
+			labelSelector, err := labels.NewRequirement(v1alpha1.SecretLabel, selection.Equals, []string{o.GetName()})
 			if err != nil {
 				return []reconcile.Request{}
 			}
@@ -167,16 +157,19 @@ func (r *AuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				}})
 			}
 			return queued
-		})).Complete(r)
+		}), builder.WithPredicates(watchPredicate)).Complete(r)
 }
 
 func (r *AuthReconciler) setStatusCondition(ctx context.Context, auth *v1alpha1.Auth, cType string, status metav1.ConditionStatus, msg string, reason string) error {
-	meta.SetStatusCondition(&auth.Status.Conditions, metav1.Condition{
-		Type:               cType,
-		Status:             status,
-		Message:            msg,
-		Reason:             reason,
-		LastTransitionTime: metav1.Now(),
-	})
-	return r.Status().Update(ctx, auth)
+	c := metav1.Condition{
+		Type:    cType,
+		Status:  status,
+		Message: msg,
+		Reason:  reason,
+	}
+
+	if meta.SetStatusCondition(&auth.Status.Conditions, c) {
+		return r.Status().Update(ctx, auth)
+	}
+	return nil
 }

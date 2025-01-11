@@ -44,8 +44,6 @@ type HostCapacity struct {
 	CPU int32 `json:"cpu"`
 	// +kubebuilder:validation:Required
 	Memory HostMemory `json:"memory"`
-	// +kubebuilder:validation:Required
-	LastUpdate metav1.Time `json:"lastUpdate"`
 }
 
 // +kubebuilder:validation:Optional

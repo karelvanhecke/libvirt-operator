@@ -31,13 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-)
-
-// Labels
-const (
-	LabelKeyBackingStore = "libvirt.karelvanhecke.com/backingstore"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // Errors
@@ -46,17 +43,7 @@ const (
 	ErrVolumeSourceAndBackingStore = "volume can not have a source and backing store at the same time"
 	ErrBackingStoreNotCreated      = "backing store volume has not yet been created"
 	ErrBackingStoreNotSamePool     = "backing store does not exist on the same pool"
-)
-
-// Condition messages
-const (
-	CondMsgBackingStoreNotExist     = "Backing store volume does not exist"
-	CondMsgBackingStoreNotCreated   = "Backing store volume has not yet been created"
-	CondMsgIsBackingStore           = "Volume is currently in use as a backingstore"
-	CondMsgBackingStoreNotSamePool  = "Backing store volume does not exist on the same pool"
-	CondMsgVolumeCreationInProgress = "Volume creation in progress"
-	CondMsgVolumeCreationFailed     = "Volume creation failed"
-	CondMsgVolumeCreationSucceeded  = "Volume creation succeeded"
+	ErrBackingStoreMustBeQcow2     = "backing store must be qcow2 format"
 )
 
 type VolumeReconciler struct {
@@ -71,34 +58,29 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
-		if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgVolumeCreationInProgress, CondReasonInProgress); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
 	pool, host, err := r.resolveRefs(ctx, volume)
 	if err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionUnmetRequirements); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 		return ctrl.Result{}, err
 	}
 
-	poolID, err := resolvePoolIdentifier(pool.Status.Identifier)
-	if err != nil {
-		if err.Error() == ErrIDNotSet {
-			if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
-				if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForPool, CondReasonInProgress); err != nil {
-					return ctrl.Result{}, err
-				}
+	if !meta.IsStatusConditionTrue(pool.Status.Conditions, v1alpha1.ConditionReady) {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, conditionPoolNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+				return ctrl.Result{}, err
 			}
-			return ctrl.Result{Requeue: true}, nil
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	hostEntry, found := r.HostStore.Lookup(host.UID)
 	if !found {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgWaitingForHost, CondReasonInProgress); err != nil {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -107,19 +89,19 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	hostClient, end := hostEntry.Session()
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(volume.Namespace, volume.Name), poolID)
+	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(volume.Namespace, volume.Name), pool.Spec.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if volume.DeletionTimestamp.IsZero() {
-		if controllerutil.AddFinalizer(volume, Finalizer) {
+		if controllerutil.AddFinalizer(volume, v1alpha1.Finalizer) {
 			if err := r.Update(ctx, volume); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		if controllerutil.ContainsFinalizer(volume, Finalizer) {
+		if controllerutil.ContainsFinalizer(volume, v1alpha1.Finalizer) {
 			if action.State() {
 				if err := r.delete(ctx, volume, action); err != nil {
 					if msg := err.Error(); msg == ErrVolumeIsBackingStore {
@@ -129,7 +111,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					return ctrl.Result{}, err
 				}
 			}
-			controllerutil.RemoveFinalizer(volume, Finalizer)
+			controllerutil.RemoveFinalizer(volume, v1alpha1.Finalizer)
 			err := r.Update(ctx, volume)
 			return ctrl.Result{}, err
 		}
@@ -137,6 +119,11 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	if action.State() {
+		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 		if volume.Spec.Size == nil {
 			return ctrl.Result{}, nil
 		}
@@ -149,17 +136,18 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			ctrl.LoggerFrom(ctx).V(1).Info(msg)
 			return ctrl.Result{Requeue: true}, nil
 		}
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
 func (r *VolumeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Volume{}).Complete(r)
+	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Volume{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).Complete(r)
 }
 
 func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
 	volumes := &v1alpha1.VolumeList{}
-	labelReq, err := labels.NewRequirement(LabelKeyBackingStore, selection.Equals, []string{volume.Name})
+	labelReq, err := labels.NewRequirement(v1alpha1.VolumeLabel, selection.Equals, []string{volume.Name})
 	if err != nil {
 		return err
 	}
@@ -168,7 +156,7 @@ func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, 
 	}
 
 	if len(volumes.Items) > 0 {
-		if err := r.setStatusCondition(ctx, volume, CondTypeDeletionProbihibited, metav1.ConditionTrue, CondMsgIsBackingStore, CondReasonInUse); err != nil {
+		if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionDeletionPrevented, metav1.ConditionTrue, ErrVolumeIsBackingStore, v1alpha1.ConditionInUse); err != nil {
 			return err
 		}
 		return errors.New(ErrVolumeIsBackingStore)
@@ -188,53 +176,61 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 	switch {
 	case hasSource:
 		if err := action.RemoteSource(ctx, volume.Spec.Source.URL, volume.Spec.Source.Checksum); err != nil {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
+				return err
+			}
 			return err
 		}
 	case volume.Spec.BackingStoreRef != nil:
 		backingStore := &v1alpha1.Volume{}
 		if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.BackingStoreRef.Name, Namespace: volume.Namespace}, backingStore); err != nil {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotExist, CondReasonFailed); err != nil {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionUnmetRequirements); err != nil {
 				return err
 			}
 			return err
 		}
 
 		if backingStore.Spec.PoolRef != volume.Spec.PoolRef {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotSamePool, CondReasonFailed); err != nil {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, ErrBackingStoreNotSamePool, v1alpha1.ConditionUnmetRequirements); err != nil {
 				return err
 			}
 			return errors.New(ErrBackingStoreNotSamePool)
 		}
 
-		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, CondTypeCreated) {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgBackingStoreNotCreated, CondReasonInProgress); err != nil {
+		if backingStore.Spec.Format != "qcow2" {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, ErrBackingStoreMustBeQcow2, v1alpha1.ConditionUnmetRequirements); err != nil {
+				return err
+			}
+			return errors.New(ErrBackingStoreMustBeQcow2)
+		}
+
+		if !meta.IsStatusConditionTrue(backingStore.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, ErrBackingStoreNotCreated, v1alpha1.ConditionUnmetRequirements); err != nil {
 				return err
 			}
 			return errors.New(ErrBackingStoreNotCreated)
 		}
 
 		if err := action.BackingStore(backingStore.Namespace + ":" + backingStore.Name); err != nil {
+			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
+				return err
+			}
 			return err
 		}
-		if volume.Labels == nil {
-			volume.Labels = map[string]string{LabelKeyBackingStore: backingStore.Name}
-		} else {
-			volume.Labels[LabelKeyBackingStore] = backingStore.Name
+		if util.SetLabel(&volume.ObjectMeta, v1alpha1.VolumeLabel, backingStore.Name) {
+			if err := r.Update(ctx, volume); err != nil {
+				return err
+			}
 		}
+	}
+	if util.SetLabel(&volume.ObjectMeta, v1alpha1.PoolLabel, volume.Spec.PoolRef.Name) {
 		if err := r.Update(ctx, volume); err != nil {
 			return err
 		}
 	}
-	if volume.Labels == nil {
-		volume.Labels = map[string]string{LabelKeyPool: volume.Spec.PoolRef.Name}
-	} else {
-		volume.Labels[LabelKeyPool] = volume.Spec.PoolRef.Name
-	}
-	if err := r.Update(ctx, volume); err != nil {
-		return err
-	}
+
 	if err := action.Create(); err != nil {
-		if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgVolumeCreationFailed, CondReasonFailed); err != nil {
+		if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
 			return err
 		}
 		return err
@@ -245,27 +241,22 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		}
 	}
 
-	return r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionTrue, CondMsgVolumeCreationSucceeded, CondReasonSucceeded)
+	volume.Status.Info = &v1alpha1.VolumeInfo{
+		Type:       action.Type(),
+		TargetPath: action.TargetPath(),
+	}
+
+	return r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated)
 }
 
 func (r *VolumeReconciler) resolveRefs(ctx context.Context, volume *v1alpha1.Volume) (*v1alpha1.Pool, *v1alpha1.Host, error) {
 	pool := &v1alpha1.Pool{}
 	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.PoolRef.Name, Namespace: volume.Namespace}, pool); err != nil {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgPoolNotFound, CondReasonFailed); err != nil {
-				return nil, nil, err
-			}
-		}
 		return nil, nil, err
 	}
 
 	host := &v1alpha1.Host{}
 	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: volume.Namespace}, host); err != nil {
-		if !meta.IsStatusConditionTrue(volume.Status.Conditions, CondTypeCreated) {
-			if err := r.setStatusCondition(ctx, volume, CondTypeCreated, metav1.ConditionFalse, CondMsgHostNotFound, CondReasonFailed); err != nil {
-				return nil, nil, err
-			}
-		}
 		return nil, nil, err
 	}
 
@@ -273,12 +264,15 @@ func (r *VolumeReconciler) resolveRefs(ctx context.Context, volume *v1alpha1.Vol
 }
 
 func (r *VolumeReconciler) setStatusCondition(ctx context.Context, volume *v1alpha1.Volume, cType string, status metav1.ConditionStatus, msg string, reason string) error {
-	meta.SetStatusCondition(&volume.Status.Conditions, metav1.Condition{
-		Type:               cType,
-		Status:             status,
-		Message:            msg,
-		Reason:             reason,
-		LastTransitionTime: metav1.Now(),
-	})
-	return r.Status().Update(ctx, volume)
+	c := metav1.Condition{
+		Type:    cType,
+		Status:  status,
+		Message: msg,
+		Reason:  reason,
+	}
+
+	if meta.SetStatusCondition(&volume.Status.Conditions, c) {
+		return r.Status().Update(ctx, volume)
+	}
+	return nil
 }

@@ -21,25 +21,3 @@ type ResourceRef struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 }
-
-// +kubebuilder:validation:XValidation:rule="!has(self.name) ? has(self.uuid) : true",message="at least the name or uuid need to be provided"
-type LibvirtLookup struct {
-	// +kubebuilder:validation:Optional
-	Name *string `json:"name,omitempty"`
-	// +kubebuilder:validation:Optional
-	UUID *string `json:"uuid,omitempty"`
-	// +kubebuilder:validation:Required
-	HostRef ResourceRef `json:"hostRef"`
-}
-
-type LibvirtIdentifier struct {
-	// +kubebuilder:validation:Pattern="^[a-z0-9][a-z0-9\\-.]{0,251}[a-z0-9]|[a-z0-9]$"
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
-}
-
-type LibvirtIdentifierWithUUID struct {
-	LibvirtIdentifier `json:",inline"`
-	// +kubebuilder:validation:Required
-	UUID string `json:"uuid"`
-}

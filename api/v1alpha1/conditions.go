@@ -14,27 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package v1alpha1
 
-import "time"
-
-// Common condition messages
+// Condition types
 const (
-	conditionCreationSucceeded  = "Creation succeeded"
-	conditionProbeCompleted     = "Probe completed"
-	conditionHostClientNotReady = "Host client is not ready"
-	conditionPoolNotReady       = "Pool is not ready"
+	ConditionReady             = "Ready"
+	ConditionProbed            = "Probed"
+	ConditionDeletionPrevented = "DeletionPrevented"
 )
 
-// Auth file names
+// Condition Reasons
 const (
-	privateKey = "privatekey"
-	knownHosts = "known_hosts"
-	clientCert = "clientcert.pem"
-	clientKey  = "clientkey.pem"
-	caCert     = "cacert.pem"
-)
-
-const (
-	dataRefreshInterval = 1 * time.Minute
+	ConditionCreated           = "Created"
+	ConditionError             = "Error"
+	ConditionUnmetRequirements = "UnmetRequirements"
+	ConditionActive            = "Active"
+	ConditionNotActive         = "NotActive"
+	ConditionNotExist          = "NotExist"
+	ConditionInUse             = "InUse"
+	ConditionRequired          = "Required"
+	ConditionCompleted         = "Completed"
 )

@@ -1321,18 +1321,15 @@ spec:
                   - type
                   type: object
                 type: array
-              identifier:
+              info:
                 properties:
-                  key:
+                  targetPath:
                     type: string
-                  name:
-                    type: string
-                  pool:
+                  type:
                     type: string
                 required:
-                - key
-                - name
-                - pool
+                - targetPath
+                - type
                 type: object
             type: object
         type: object

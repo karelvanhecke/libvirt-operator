@@ -51,12 +51,17 @@ type VolumeAction struct {
 	source *os.File
 }
 
-func NewVolumeAction(client host.Client, name string, pool libvirt.StoragePool) (*VolumeAction, error) {
+func NewVolumeAction(client host.Client, name string, pool string) (*VolumeAction, error) {
 	a := &VolumeAction{
 		Client: client,
 		name:   name,
-		pool:   pool,
 	}
+
+	p, err := a.StoragePoolLookupByName(pool)
+	if err != nil {
+		return nil, err
+	}
+	a.pool = p
 
 	id, err := a.StorageVolLookupByName(a.pool, a.name)
 	if err != nil {
@@ -200,12 +205,21 @@ func (a *VolumeAction) Create() error {
 	if err != nil {
 		return err
 	}
+	a.id = &v
 
 	if a.source != nil {
-		return a.StorageVolUpload(v, a.source, 0, 0, libvirt.StorageVolUploadSparseStream)
+		if err := a.StorageVolUpload(v, a.source, 0, 0, libvirt.StorageVolUploadSparseStream); err != nil {
+			return err
+		}
 	}
 
-	return nil
+	xml, err = a.StorageVolGetXMLDesc(v, 0)
+	if err != nil {
+		return err
+	}
+
+	a.def = &libvirtxml.StorageVolume{}
+	return a.def.Unmarshal(xml)
 }
 
 func (a *VolumeAction) Update(unit string, value uint64) error {
@@ -232,4 +246,12 @@ func (a *VolumeAction) CleanupSource() error {
 		return err
 	}
 	return os.Remove(a.source.Name())
+}
+
+func (a *VolumeAction) Type() string {
+	return a.def.Type
+}
+
+func (a *VolumeAction) TargetPath() string {
+	return a.def.Target.Path
 }
