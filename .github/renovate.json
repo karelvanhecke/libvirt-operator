@@ -8,7 +8,6 @@
     "postUpdateOptions": [
         "gomodTidy"
     ],
-    "separateMinorPatch": true,
     "customManagers":[
         {
             "customType": "regex",
@@ -37,10 +36,20 @@
             "automerge": true
         },
         {
+            "matchCurrentVersion": "/^v?0/",
+            "separateMinorPatch": true
+        },
+        {
+            "matchDepNames":[
+                "kubernetes/kubernetes",
+                "kindest/node"
+            ],
+            "separateMinorPatch": true
+        },
+        {
             "matchUpdateTypes": ["minor"],
             "matchDepNames":[
-                "kubernetes/*",
-                "kubernetes-sigs/*",
+                "kubernetes/kubernetes",
                 "kindest/node"
             ],
             "automerge": false
