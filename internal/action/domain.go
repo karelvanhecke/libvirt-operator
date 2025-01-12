@@ -96,10 +96,12 @@ func NewDomainAction(client host.Client, name string) (*DomainAction, error) {
 						},
 						Channels: []libvirtxml.DomainChannel{
 							{
+								Source: &libvirtxml.DomainChardevSource{
+									UNIX: &libvirtxml.DomainChardevSourceUNIX{},
+								},
 								Target: &libvirtxml.DomainChannelTarget{
 									VirtIO: &libvirtxml.DomainChannelTargetVirtIO{
-										Name:  "org.qemu.guest_agent.0",
-										State: "connected",
+										Name: "org.qemu.guest_agent.0",
 									},
 								},
 							},
