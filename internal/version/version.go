@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"gopkg.in/yaml.v3"
+	"github.com/karelvanhecke/libvirt-operator/internal/util"
 )
 
 var (
@@ -92,12 +92,9 @@ func (i *Info) JSON() (string, error) {
 }
 
 func (i *Info) YAML() (string, error) {
-	buf := bytes.NewBuffer([]byte{})
-	enc := yaml.NewEncoder(buf)
-	enc.SetIndent(2)
-	err := enc.Encode(i)
+	s, err := util.Marshal(bytes.NewBuffer([]byte{}), i)
 	if err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+	return string(s), nil
 }
