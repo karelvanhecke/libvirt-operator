@@ -130,7 +130,7 @@ func TestVolumeCreateBackingStore(t *testing.T) {
 	}
 	a.Format(format)
 
-	if err := a.BackingStore(backingStore); err != nil {
+	if err := a.BackingStore(backingStore, pool); err != nil {
 		t.Fail()
 	}
 

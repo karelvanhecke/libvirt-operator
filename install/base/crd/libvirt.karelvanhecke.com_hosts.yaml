@@ -58,9 +58,11 @@ spec:
             type: object
           status:
             properties:
-              capacity:
+              capability:
                 properties:
-                  cpu:
+                  arch:
+                    type: string
+                  cpus:
                     format: int32
                     type: integer
                   memory:
@@ -75,9 +77,13 @@ spec:
                     - free
                     - total
                     type: object
+                  numa:
+                    type: boolean
                 required:
-                - cpu
+                - arch
+                - cpus
                 - memory
+                - numa
                 type: object
               conditions:
                 items:

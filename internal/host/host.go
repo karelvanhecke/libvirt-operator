@@ -28,10 +28,8 @@ var (
 )
 
 type Client interface {
+	Capabilities() ([]byte, error)
 	Connect() error
-	ConnectListAllNodeDevices(NeedResults int32, Flags uint32) (rDevices []libvirt.NodeDevice, rRet uint32, err error)
-	ConnectListAllNetworks(NeedResults int32, Flags libvirt.ConnectListAllNetworksFlags) (rNets []libvirt.Network, rRet uint32, err error)
-	ConnectListAllStoragePools(NeedResults int32, Flags libvirt.ConnectListAllStoragePoolsFlags) (rPools []libvirt.StoragePool, rRet uint32, err error)
 	Disconnected() <-chan struct{}
 	Disconnect() error
 	DomainCreate(Dom libvirt.Domain) (err error)
@@ -40,19 +38,18 @@ type Client interface {
 	DomainGetXMLDesc(Dom libvirt.Domain, Flags libvirt.DomainXMLFlags) (rXML string, err error)
 	DomainLookupByName(Name string) (rDom libvirt.Domain, err error)
 	DomainShutdown(Dom libvirt.Domain) (err error)
+	DomainUndefineFlags(Dom libvirt.Domain, Flags libvirt.DomainUndefineFlagsValues) (err error)
 	IsConnected() bool
-	NetworkGetXMLDesc(Net libvirt.Network, Flags uint32) (rXML string, err error)
 	NetworkIsActive(Net libvirt.Network) (rActive int32, err error)
 	NetworkLookupByName(Name string) (rNet libvirt.Network, err error)
 	NodeDeviceGetXMLDesc(Name string, Flags uint32) (rXML string, err error)
 	NodeDeviceIsActive(Name string) (rActive int32, err error)
 	NodeDeviceLookupByName(Name string) (rDev libvirt.NodeDevice, err error)
 	NodeGetMemoryStats(Nparams int32, CellNum int32, Flags uint32) (rParams []libvirt.NodeGetMemoryStats, rNparams int32, err error)
-	NodeGetInfo() (rModel [32]int8, rMemory uint64, rCpus int32, rMhz int32, rNodes int32, rSockets int32, rCores int32, rThreads int32, err error)
 	StoragePoolGetInfo(Pool libvirt.StoragePool) (rState uint8, rCapacity uint64, rAllocation uint64, rAvailable uint64, err error)
-	StoragePoolGetXMLDesc(Pool libvirt.StoragePool, Flags libvirt.StorageXMLFlags) (rXML string, err error)
 	StoragePoolIsActive(Pool libvirt.StoragePool) (rActive int32, err error)
 	StoragePoolLookupByName(name string) (rPool libvirt.StoragePool, err error)
+	StorageVolLookupByKey(Key string) (rVol libvirt.StorageVol, err error)
 	StorageVolLookupByName(pool libvirt.StoragePool, name string) (rVol libvirt.StorageVol, err error)
 	StorageVolGetXMLDesc(vol libvirt.StorageVol, flags uint32) (rXML string, err error)
 	StorageVolCreateXML(pool libvirt.StoragePool, xml string, flags libvirt.StorageVolCreateFlags) (rVol libvirt.StorageVol, err error)

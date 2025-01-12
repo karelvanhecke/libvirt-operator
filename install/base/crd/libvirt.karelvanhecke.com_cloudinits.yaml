@@ -1321,16 +1321,10 @@ spec:
                   - type
                   type: object
                 type: array
-              info:
-                properties:
-                  targetPath:
-                    type: string
-                  type:
-                    type: string
-                required:
-                - targetPath
-                - type
-                type: object
+              host:
+                type: string
+              pool:
+                type: string
             type: object
         type: object
     served: true

@@ -27,6 +27,8 @@ import (
 	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -56,10 +58,22 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(pciDevice, v1alpha1.Finalizer) {
-			// TODO
-			ctrl.LoggerFrom(ctx).V(1).Info("check if pciDevice is referred by domains")
+			labelSelector, err := labels.NewRequirement(v1alpha1.PCIPassthroughLabelPrefix+"/"+pciDevice.Name, selection.Equals, []string{""})
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			domains := &v1alpha1.DomainList{}
+			if err := r.List(ctx, domains, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+				return ctrl.Result{}, err
+			}
+			if len(domains.Items) > 0 {
+				if err := r.setStatusCondition(ctx, pciDevice, v1alpha1.ConditionDeletionPrevented, metav1.ConditionTrue, "PCI device is currently in use by domain", v1alpha1.ConditionInUse); err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{Requeue: true}, nil
+			}
 			controllerutil.RemoveFinalizer(pciDevice, v1alpha1.Finalizer)
-			err := r.Update(ctx, pciDevice)
+			err = r.Update(ctx, pciDevice)
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil

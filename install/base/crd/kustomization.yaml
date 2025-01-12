@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - libvirt.karelvanhecke.com_auths.yaml
   - libvirt.karelvanhecke.com_cloudinits.yaml
+  - libvirt.karelvanhecke.com_domains.yaml
   - libvirt.karelvanhecke.com_hosts.yaml
   - libvirt.karelvanhecke.com_networks.yaml
   - libvirt.karelvanhecke.com_pcidevices.yaml

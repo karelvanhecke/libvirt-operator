@@ -109,8 +109,13 @@ func (a *VolumeAction) Format(format string) {
 	}
 }
 
-func (a *VolumeAction) BackingStore(name string) error {
-	bs, err := a.StorageVolLookupByName(a.pool, name)
+func (a *VolumeAction) BackingStore(name string, pool string) error {
+	p, err := a.StoragePoolLookupByName(pool)
+	if err != nil {
+		return err
+	}
+
+	bs, err := a.StorageVolLookupByName(p, name)
 	if err != nil {
 		return err
 	}
@@ -208,18 +213,9 @@ func (a *VolumeAction) Create() error {
 	a.id = &v
 
 	if a.source != nil {
-		if err := a.StorageVolUpload(v, a.source, 0, 0, libvirt.StorageVolUploadSparseStream); err != nil {
-			return err
-		}
+		return a.StorageVolUpload(v, a.source, 0, 0, libvirt.StorageVolUploadSparseStream)
 	}
-
-	xml, err = a.StorageVolGetXMLDesc(v, 0)
-	if err != nil {
-		return err
-	}
-
-	a.def = &libvirtxml.StorageVolume{}
-	return a.def.Unmarshal(xml)
+	return nil
 }
 
 func (a *VolumeAction) Update(unit string, value uint64) error {
@@ -246,12 +242,4 @@ func (a *VolumeAction) CleanupSource() error {
 		return err
 	}
 	return os.Remove(a.source.Name())
-}
-
-func (a *VolumeAction) Type() string {
-	return a.def.Type
-}
-
-func (a *VolumeAction) TargetPath() string {
-	return a.def.Target.Path
 }

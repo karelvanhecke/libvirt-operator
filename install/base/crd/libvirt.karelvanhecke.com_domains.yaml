@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.0
-  name: volumes.libvirt.karelvanhecke.com
+  name: domains.libvirt.karelvanhecke.com
 spec:
   group: libvirt.karelvanhecke.com
   names:
-    kind: Volume
-    listKind: VolumeList
-    plural: volumes
-    singular: volume
+    kind: Domain
+    listKind: DomainList
+    plural: domains
+    singular: domain
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -37,7 +37,61 @@ spec:
             type: object
           spec:
             properties:
-              backingStoreRef:
+              cloudInit:
+                properties:
+                  cloudInitRef:
+                    properties:
+                      name:
+                        pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - cloudInitRef
+                type: object
+                x-kubernetes-validations:
+                - message: can not change cloud-init of existing domain
+                  rule: oldSelf == self
+              cpu:
+                properties:
+                  cacheMode:
+                    enum:
+                    - emulate
+                    - passthrough
+                    - disable
+                    type: string
+                  mode:
+                    enum:
+                    - host-model
+                    - host-passthrough
+                    - maximum
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: can not change cpu of existing domain
+                  rule: oldSelf == self
+              disks:
+                items:
+                  properties:
+                    volumeRef:
+                      properties:
+                        name:
+                          pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    wwn:
+                      type: string
+                  required:
+                  - volumeRef
+                  type: object
+                type: array
+                x-kubernetes-validations:
+                - message: can not change disks of existing domain
+                  rule: oldSelf == self
+              hostRef:
                 properties:
                   name:
                     pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
@@ -46,28 +100,30 @@ spec:
                 - name
                 type: object
                 x-kubernetes-validations:
-                - message: can not change backing store of existing volume
+                - message: can not change host of existing domain
                   rule: oldSelf == self
-              format:
-                enum:
-                - qcow2
-                - raw
-                type: string
+              interfaces:
+                items:
+                  properties:
+                    networkRef:
+                      properties:
+                        name:
+                          pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    queues:
+                      format: int32
+                      type: integer
+                  required:
+                  - networkRef
+                  type: object
+                type: array
                 x-kubernetes-validations:
-                - message: can not change format of existing volume
+                - message: can not change interfaces of existing domain
                   rule: oldSelf == self
-              poolRef:
-                properties:
-                  name:
-                    pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
-                    type: string
-                required:
-                - name
-                type: object
-                x-kubernetes-validations:
-                - message: can not change pool of existing volume
-                  rule: oldSelf == self
-              size:
+              memory:
                 properties:
                   unit:
                     enum:
@@ -85,12 +141,6 @@ spec:
                     - TB
                     - T
                     - TiB
-                    - PB
-                    - P
-                    - PiB
-                    - EB
-                    - E
-                    - EiB
                     type: string
                   value:
                     format: int64
@@ -99,38 +149,81 @@ spec:
                 required:
                 - value
                 type: object
-              source:
+                x-kubernetes-validations:
+                - message: can not change memory of existing domain
+                  rule: oldSelf == self
+              numatuneMode:
+                enum:
+                - interleave
+                - strict
+                - preferred
+                - restrictive
+                type: string
+                x-kubernetes-validations:
+                - message: can not change numatune mode of existing domain
+                  rule: oldSelf == self
+              pciPassthrough:
+                items:
+                  properties:
+                    pciDeviceRef:
+                      properties:
+                        name:
+                          pattern: ^[a-z0-9][a-z0-9\-.]{0,251}[a-z0-9]|[a-z0-9]$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                  required:
+                  - pciDeviceRef
+                  type: object
+                type: array
+                x-kubernetes-validations:
+                - message: can not change pci passthrough of existing domain
+                  rule: oldSelf == self
+              scsiQueues:
+                format: int32
+                type: integer
+                x-kubernetes-validations:
+                - message: can not change SCSI queues of existing domain
+                  rule: oldSelf == self
+              secureBoot:
+                type: boolean
+                x-kubernetes-validations:
+                - message: can not change secureboot of existing domain
+                  rule: oldSelf == self
+              shutoff:
+                type: boolean
+              uefi:
+                type: boolean
+                x-kubernetes-validations:
+                - message: can not change uefi of existing domain
+                  rule: oldSelf == self
+              vcpu:
                 properties:
-                  checksum:
+                  placement:
+                    enum:
+                    - auto
+                    - static
                     type: string
-                    x-kubernetes-validations:
-                    - message: must be a valid SHA256 or SHA512 checksum
-                      rule: self.matches("^sha256:[a-fA-F0-9]{64}|sha512:[a-fA-F0-9]{128}$")
-                  url:
-                    type: string
-                    x-kubernetes-validations:
-                    - message: must be a valid http(s) url
-                      rule: url(self).getScheme() == 'https' || url(self).getScheme()
-                        == 'http'
+                  value:
+                    format: int32
+                    type: integer
                 required:
-                - url
+                - value
                 type: object
                 x-kubernetes-validations:
-                - message: can not change source of existing volume
+                - message: can not change vcpu of existing domain
                   rule: oldSelf == self
             required:
-            - format
-            - poolRef
+            - disks
+            - hostRef
+            - memory
+            - vcpu
             type: object
             x-kubernetes-validations:
-            - message: source and backing store can not be defined at the same time
-              rule: 'has(self.source) ? !has(self.backingStoreRef) : true'
-            - message: size can only be omitted when a source or backing store or
-                defined
-              rule: '!has(self.size) ? has(self.backingStoreRef) || has(self.source)
-                : true'
-            - message: backing store can only be used with the qcow2 format
-              rule: 'has(self.backingStoreRef) ? self.format == ''qcow2'' : true'
+            - message: SecureBoot requires UEFI to be enabled
+              rule: 'has(self.secureBoot) && self.secureBoot ? !has(self.uefi) ||
+                self.uefi : true'
           status:
             properties:
               conditions:
@@ -189,10 +282,6 @@ spec:
                   - type
                   type: object
                 type: array
-              host:
-                type: string
-              pool:
-                type: string
             type: object
         type: object
     served: true

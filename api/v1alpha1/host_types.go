@@ -39,16 +39,20 @@ type HostMemory struct {
 	Free int64 `json:"free"`
 }
 
-type HostCapacity struct {
+type HostCapability struct {
 	// +kubebuilder:validation:Required
-	CPU int32 `json:"cpu"`
+	Arch string `json:"arch"`
+	// +kubebuilder:validation:Required
+	CPUS int32 `json:"cpus"`
 	// +kubebuilder:validation:Required
 	Memory HostMemory `json:"memory"`
+	// +kubebuilder:validation:Required
+	NUMA bool `json:"numa"`
 }
 
 // +kubebuilder:validation:Optional
 type HostStatus struct {
-	Capacity   *HostCapacity      `json:"capacity,omitempty"`
+	Capacity   *HostCapability    `json:"capability,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
