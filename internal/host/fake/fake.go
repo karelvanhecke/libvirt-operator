@@ -249,6 +249,11 @@ func (f *Fake) WithDomain(domain *libvirtxml.Domain, state int32) {
 	})
 }
 
+func (f *Fake) DomainBlockResize(Dom libvirt.Domain, Disk string, Size uint64, Flags libvirt.DomainBlockResizeFlags) (err error) {
+	//TODO
+	return nil
+}
+
 func (f *Fake) DomainCreate(Dom libvirt.Domain) (err error) {
 	d, err := f.getDomainByName(Dom.Name)
 	if err != nil {

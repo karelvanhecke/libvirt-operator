@@ -39,9 +39,11 @@ import (
 
 // Errors
 const (
-	ErrVolumeInUse             = "volume is in use by another resource"
-	ErrBackingStoreNotCreated  = "backing store volume has not yet been created"
-	ErrBackingStoreNotSameHost = "backing store does not exist on the same host"
+	ErrVolumeInUse              = "volume is in use by another resource"
+	ErrBackingStoreNotCreated   = "backing store volume has not yet been created"
+	ErrBackingStoreNotSameHost  = "backing store does not exist on the same host"
+	ErrCannotResizeBackingStore = "can not resize volume that is used as a backing store"
+	ErrVolumeMultipleDomains    = "volume linked to multiple domains"
 )
 
 type VolumeReconciler struct {
@@ -133,8 +135,32 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if volume.Spec.Size == nil {
 			return ctrl.Result{}, nil
 		}
-		err := action.Update(volume.Spec.Size.Unit, safecast.ToUint64(volume.Spec.Size.Value))
-		return ctrl.Result{}, err
+		u := volume.Spec.Size.Unit
+		v := safecast.ToUint64(volume.Spec.Size.Value)
+		if ok, err := action.ResizeRequired(u, v); err != nil {
+			return ctrl.Result{}, err
+		} else {
+			if !ok {
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if ok, err := r.isNotBackingStore(ctx, volume.Name); err != nil {
+			return ctrl.Result{}, err
+		} else {
+			if !ok {
+				return ctrl.Result{}, errors.New(ErrCannotResizeBackingStore)
+			}
+		}
+
+		if d, ok, err := r.usedByDomain(ctx, volume.Name); err != nil {
+			return ctrl.Result{}, err
+		} else {
+			if ok {
+				return ctrl.Result{}, action.LiveResize(util.LibvirtNamespacedName(d.Namespace, d.Name), u, v)
+			}
+		}
+		return ctrl.Result{}, action.Resize(u, v)
 	}
 
 	if err := r.create(ctx, volume, pool, action); err != nil {
@@ -149,6 +175,43 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 func (r *VolumeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Volume{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).Complete(r)
+}
+
+func (r *VolumeReconciler) isNotBackingStore(ctx context.Context, name string) (bool, error) {
+	labelReq, err := labels.NewRequirement(v1alpha1.VolumeLabel, selection.Equals, []string{name})
+	if err != nil {
+		return false, err
+	}
+	volumes := &v1alpha1.VolumeList{}
+	if err := r.List(ctx, volumes, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelReq)}); err != nil {
+		return false, err
+	}
+
+	if len(volumes.Items) > 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *VolumeReconciler) usedByDomain(ctx context.Context, name string) (domain v1alpha1.Domain, ok bool, err error) {
+	labelSelector, err := labels.NewRequirement(v1alpha1.DiskLabelPrefix+"/"+name, selection.Equals, []string{""})
+	if err != nil {
+		return v1alpha1.Domain{}, false, err
+	}
+	domains := &v1alpha1.DomainList{}
+	if err := r.List(ctx, domains, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
+		return v1alpha1.Domain{}, false, err
+	}
+
+	if len(domains.Items) > 1 {
+		return v1alpha1.Domain{}, false, errors.New(ErrVolumeMultipleDomains)
+	}
+
+	if len(domains.Items) == 0 {
+		return v1alpha1.Domain{}, false, nil
+	}
+
+	return domains.Items[0], true, nil
 }
 
 func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {

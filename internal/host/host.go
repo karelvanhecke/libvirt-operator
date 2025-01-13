@@ -32,6 +32,7 @@ type Client interface {
 	Connect() error
 	Disconnected() <-chan struct{}
 	Disconnect() error
+	DomainBlockResize(Dom libvirt.Domain, Disk string, Size uint64, Flags libvirt.DomainBlockResizeFlags) (err error)
 	DomainCreate(Dom libvirt.Domain) (err error)
 	DomainDefineXML(XML string) (rDom libvirt.Domain, err error)
 	DomainGetState(Dom libvirt.Domain, Flags uint32) (rState int32, rReason int32, err error)

@@ -232,7 +232,7 @@ func TestVolumeUpdate(t *testing.T) {
 		t.Fatal()
 	}
 
-	if err := a.Update(unit, newValue); err != nil {
+	if err := a.Resize(unit, newValue); err != nil {
 		t.Fail()
 	}
 
