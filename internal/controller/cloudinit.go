@@ -84,7 +84,15 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hostClient, end := hostEntry.Session()
+	hostClient, end, err := hostEntry.Session()
+	if err != nil {
+		if !meta.IsStatusConditionTrue(ci.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	defer end()
 
 	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(ci.Namespace, CIPrefix+ci.Name), pool.Spec.Name)

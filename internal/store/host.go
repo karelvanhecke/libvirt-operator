@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -26,6 +27,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	ctrl "sigs.k8s.io/controller-runtime"
+)
+
+const (
+	ErrClientNotConnected = "client is not connected"
 )
 
 var (
@@ -64,12 +69,13 @@ func (s *HostStore) Register(ctx context.Context, uid types.UID, generation int6
 		ctrl.LoggerFrom(ctx).Error(err, "failed to connect host host")
 	}
 
+	entry.mon = make(chan struct{})
 	go entry.monitor(ctx, uid)
 
 	s.entries[uid] = entry
 
 	if found {
-		go oldEntry.gracefulDisconnect(ctx, uid)
+		oldEntry.mon <- struct{}{}
 	}
 }
 
@@ -80,7 +86,7 @@ func (s *HostStore) Deregister(ctx context.Context, uid types.UID) {
 	entry, found := s.entries[uid]
 	if found {
 		delete(s.entries, uid)
-		go entry.gracefulDisconnect(ctx, uid)
+		entry.mon <- struct{}{}
 	}
 }
 
@@ -92,7 +98,11 @@ func (s *HostStore) Lookup(uid types.UID) (entry *HostEntry, found bool) {
 	return
 }
 
-func (e *HostEntry) Session() (client host.Client, end func()) {
+func (e *HostEntry) Session() (client host.Client, end func(), err error) {
+	if !e.client.IsConnected() {
+		return nil, nil, errors.New(ErrClientNotConnected)
+	}
+
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -107,7 +117,7 @@ func (e *HostEntry) Session() (client host.Client, end func()) {
 		delete(e.sessions, sessionID)
 	}
 	e.sessions[sessionID] = struct{}{}
-	return e.client, end
+	return e.client, end, nil
 }
 
 func (e *HostEntry) Generation() int64 {
@@ -115,7 +125,6 @@ func (e *HostEntry) Generation() int64 {
 }
 
 func (e *HostEntry) monitor(ctx context.Context, uid types.UID) {
-	e.mon = make(chan struct{})
 	for {
 		if e.client != nil {
 			select {
@@ -124,8 +133,10 @@ func (e *HostEntry) monitor(ctx context.Context, uid types.UID) {
 					ctrl.LoggerFrom(ctx).Error(err, "could not reconnect client", "host", uid)
 				}
 			case <-ctx.Done():
+				e.gracefulDisconnect(ctx, uid)
 				return
 			case <-e.mon:
+				e.gracefulDisconnect(ctx, uid)
 				return
 			}
 		}
@@ -133,7 +144,6 @@ func (e *HostEntry) monitor(ctx context.Context, uid types.UID) {
 }
 
 func (e *HostEntry) gracefulDisconnect(ctx context.Context, uid types.UID) {
-	e.mon <- struct{}{}
 	for {
 		if e.client != nil && e.client.IsConnected() {
 			if len(e.sessions) > 0 {

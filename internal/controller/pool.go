@@ -112,7 +112,13 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hostClient, end := hostEntry.Session()
+	hostClient, end, err := hostEntry.Session()
+	if err != nil {
+		if err := r.setStatusCondition(ctx, pool, v1alpha1.ConditionProbed, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	defer end()
 
 	probe, err := probe.NewPoolProbe(hostClient, pool.Spec.Name)
