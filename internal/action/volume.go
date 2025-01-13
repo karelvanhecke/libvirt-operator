@@ -34,16 +34,18 @@ import (
 )
 
 const (
-	ErrUnsupportedHash  = "unsupported hash"
-	ErrChecksumFail     = "download failed checksum verification"
-	ErrNoExistingVolume = "volume does not exist"
-	ErrVolumeShrinking  = "shrinking a volume is not supported"
+	ErrUnsupportedHash   = "unsupported hash"
+	ErrChecksumFail      = "download failed checksum verification"
+	ErrNoExistingVolume  = "volume does not exist"
+	ErrVolumeShrinking   = "shrinking a volume is not supported"
+	ErrLiveResizeNoMatch = "could not match volume to a disk during live resize"
 )
 
 type VolumeAction struct {
 	host.Client
-	name string
-	pool libvirt.StoragePool
+	name     string
+	poolName string
+	pool     libvirt.StoragePool
 
 	id  *libvirt.StorageVol
 	def *libvirtxml.StorageVolume
@@ -53,8 +55,9 @@ type VolumeAction struct {
 
 func NewVolumeAction(client host.Client, name string, pool string) (*VolumeAction, error) {
 	a := &VolumeAction{
-		Client: client,
-		name:   name,
+		Client:   client,
+		name:     name,
+		poolName: pool,
 	}
 
 	p, err := a.StoragePoolLookupByName(pool)
@@ -218,19 +221,77 @@ func (a *VolumeAction) Create() error {
 	return nil
 }
 
-func (a *VolumeAction) Update(unit string, value uint64) error {
+func (a *VolumeAction) ResizeRequired(unit string, value uint64) (bool, error) {
 	current := util.ConvertToBytes(a.def.Capacity.Value, a.def.Capacity.Unit)
 	desired := util.ConvertToBytes(value, unit)
 
 	if desired < current {
-		return errors.New(ErrVolumeShrinking)
+		return false, errors.New(ErrVolumeShrinking)
 	}
 
 	if desired > current {
-		return a.StorageVolResize(*a.id, desired, 0)
+		return true, nil
 	}
 
-	return nil
+	return false, nil
+}
+
+func (a *VolumeAction) Resize(unit string, value uint64) error {
+	b := util.ConvertToBytes(value, unit)
+	return a.StorageVolResize(*a.id, b, 0)
+}
+
+func (a *VolumeAction) LiveResize(domain string, unit string, value uint64) error {
+	dom, err := a.DomainLookupByName(domain)
+	if err != nil {
+		return err
+	}
+
+	state, _, err := a.DomainGetState(dom, 0)
+	if err != nil {
+		return err
+	}
+
+	if state != int32(libvirt.DomainRunning) {
+		return a.Resize(unit, value)
+	}
+
+	xml, err := a.DomainGetXMLDesc(dom, 0)
+	if err != nil {
+		return err
+	}
+
+	desc := &libvirtxml.Domain{}
+	if err := desc.Unmarshal(xml); err != nil {
+		return err
+	}
+
+	for _, disk := range desc.Devices.Disks {
+		ok := false
+		if f := disk.Source.File; f != nil {
+			if f.File == a.def.Target.Path {
+				ok = true
+			}
+		}
+
+		if b := disk.Source.Block; b != nil {
+			if b.Dev == a.def.Target.Path {
+				ok = true
+			}
+		}
+
+		if v := disk.Source.Volume; v != nil {
+			if v.Volume == a.name && v.Pool == a.poolName {
+				ok = true
+			}
+		}
+
+		if ok {
+			return a.DomainBlockResize(dom, disk.Target.Dev, util.ConvertToBytes(value, unit), libvirt.DomainBlockResizeBytes)
+		}
+	}
+
+	return errors.New(ErrLiveResizeNoMatch)
 }
 
 func (a *VolumeAction) Delete() error {
