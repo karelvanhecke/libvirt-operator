@@ -184,7 +184,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			q := safecast.ToUint(*q)
 			queues = &q
 		}
-		action.Interface(network.Spec.Name, queues)
+		action.Interface(network.Spec.Name, queues, in.MacAddress)
 		if util.SetLabel(&domain.ObjectMeta, v1alpha1.InterfaceLabelPrefix+"/"+network.Name, "") {
 			if err := r.Update(ctx, domain); err != nil {
 				return ctrl.Result{}, err

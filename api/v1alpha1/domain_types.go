@@ -60,6 +60,9 @@ type DomainInterface struct {
 	NetworkRef ResourceRef `json:"networkRef"`
 	// +kubebuilder:validation:Optional
 	Queues *int32 `json:"queues,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Pattern="^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$"
+	MacAddress *string `json:"macAddress,omitempty"`
 }
 
 type DomainCloudInit struct {
