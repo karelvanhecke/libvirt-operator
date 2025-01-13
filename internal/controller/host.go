@@ -123,10 +123,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 					return ctrl.Result{RequeueAfter: dataRefreshInterval - d}, nil
 				}
 			}
-			if err := r.probe(ctx, host, hostEntry); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{RequeueAfter: dataRefreshInterval}, nil
+			return r.probe(ctx, host, hostEntry)
 		}
 	}
 
@@ -173,11 +170,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	hostEntry, _ = r.HostStore.Lookup(host.UID)
 
-	if err := r.probe(ctx, host, hostEntry); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{RequeueAfter: dataRefreshInterval}, nil
+	return r.probe(ctx, host, hostEntry)
 }
 
 func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -204,20 +197,26 @@ func (r *HostReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}), builder.WithPredicates(watchPredicate)).Complete(r)
 }
 
-func (r *HostReconciler) probe(ctx context.Context, host *v1alpha1.Host, hostEntry *store.HostEntry) error {
+func (r *HostReconciler) probe(ctx context.Context, host *v1alpha1.Host, hostEntry *store.HostEntry) (ctrl.Result, error) {
 	if err := r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionFalse, "New probe required", v1alpha1.ConditionRequired); err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
-	hostClient, end := hostEntry.Session()
+	hostClient, end, err := hostEntry.Session()
+	if err != nil {
+		if err := r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	defer end()
 
 	probe, err := probe.NewHostProbe(hostClient)
 	if err != nil {
 		if err := r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionFalse, "Probe could not be completed", v1alpha1.ConditionError); err != nil {
-			return err
+			return ctrl.Result{}, err
 		}
-		return err
+		return ctrl.Result{}, err
 	}
 
 	host.Status.Capacity = &v1alpha1.HostCapability{
@@ -230,7 +229,7 @@ func (r *HostReconciler) probe(ctx context.Context, host *v1alpha1.Host, hostEnt
 		NUMA: probe.NUMA(),
 	}
 
-	return r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionTrue, conditionProbeCompleted, v1alpha1.ConditionCompleted)
+	return ctrl.Result{RequeueAfter: dataRefreshInterval}, r.setStatusCondition(ctx, host, v1alpha1.ConditionProbed, metav1.ConditionTrue, conditionProbeCompleted, v1alpha1.ConditionCompleted)
 }
 
 func (r *HostReconciler) setStatusCondition(ctx context.Context, host *v1alpha1.Host, cType string, status metav1.ConditionStatus, msg string, reason string) error {

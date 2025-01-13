@@ -102,7 +102,13 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hostClient, end := hostEntry.Session()
+	hostClient, end, err := hostEntry.Session()
+	if err != nil {
+		if err := r.setStatusCondition(ctx, network, v1alpha1.ConditionProbed, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	defer end()
 
 	probe, err := probe.NewNetworkProbe(hostClient, network.Spec.Name)

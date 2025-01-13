@@ -55,7 +55,10 @@ func TestHostStore(t *testing.T) {
 		entry = e
 	}
 
-	client, end := entry.Session()
+	client, end, err := entry.Session()
+	if err != nil {
+		t.Fail()
+	}
 
 	time.Sleep(1 * time.Second)
 	if !client.IsConnected() {

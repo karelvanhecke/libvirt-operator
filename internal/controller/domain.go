@@ -74,7 +74,15 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
-	hostClient, end := hostEntry.Session()
+	hostClient, end, err := hostEntry.Session()
+	if err != nil {
+		if !meta.IsStatusConditionTrue(domain.Status.Conditions, v1alpha1.ConditionReady) {
+			if err := r.setStatusCondition(ctx, domain, v1alpha1.ConditionReady, metav1.ConditionFalse, conditionHostClientNotReady, v1alpha1.ConditionUnmetRequirements); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
 	defer end()
 
 	action, err := action.NewDomainAction(hostClient, util.LibvirtNamespacedName(domain.Namespace, domain.Name))
