@@ -309,7 +309,7 @@ func setDomainDiskSource(source *libvirtxml.DomainDiskSource, sourceType string,
 	return nil
 }
 
-func (a *DomainAction) Interface(network string, queues *uint) {
+func (a *DomainAction) Interface(network string, queues *uint, macAddress *string) {
 	i := libvirtxml.DomainInterface{
 		Driver: &libvirtxml.DomainInterfaceDriver{
 			Name: "vhost",
@@ -326,6 +326,10 @@ func (a *DomainAction) Interface(network string, queues *uint) {
 
 	if queues != nil {
 		i.Driver.Queues = *queues
+	}
+
+	if macAddress != nil {
+		i.MAC = &libvirtxml.DomainInterfaceMAC{Address: *macAddress}
 	}
 
 	a.def.Devices.Interfaces = append(a.def.Devices.Interfaces, i)
