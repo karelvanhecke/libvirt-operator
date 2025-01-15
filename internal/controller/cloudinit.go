@@ -95,7 +95,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(ci.Namespace, CIPrefix+ci.Name), pool.Spec.Name)
+	action, err := action.NewCloudInitAction(hostClient, ci.Name, pool.Spec.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

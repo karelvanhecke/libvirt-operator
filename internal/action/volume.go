@@ -145,10 +145,6 @@ func (a *VolumeAction) BackingStore(name string, pool string) error {
 	return nil
 }
 
-func (a *VolumeAction) LocalSource(file *os.File) {
-	a.source = file
-}
-
 func (a *VolumeAction) RemoteSource(ctx context.Context, url string, checksum *string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

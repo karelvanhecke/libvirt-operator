@@ -284,6 +284,10 @@ func (a *DomainAction) Disk(volume string, pool string, wwn *string, readonly *b
 	return nil
 }
 
+func (a *DomainAction) CloudInit(volume string, pool string, wwn *string, readonly *bool) error {
+	return a.Disk(CloudInitVolumePrefix+volume, pool, wwn, readonly)
+}
+
 func (a *DomainAction) getVolumeSourceDescription(volume libvirt.StorageVol) (*libvirtxml.StorageVolume, error) {
 	xml, err := a.StorageVolGetXMLDesc(volume, 0)
 	if err != nil {

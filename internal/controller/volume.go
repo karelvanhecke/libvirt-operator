@@ -97,7 +97,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(volume.Namespace, volume.Name), pool.Spec.Name)
+	action, err := action.NewVolumeAction(hostClient, volume.Name, pool.Spec.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -157,7 +157,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		} else {
 			if ok {
-				return ctrl.Result{}, action.LiveResize(util.LibvirtNamespacedName(d.Namespace, d.Name), u, v)
+				return ctrl.Result{}, action.LiveResize(d.Name, u, v)
 			}
 		}
 		return ctrl.Result{}, action.Resize(u, v)
@@ -282,7 +282,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 			return errors.New(ErrBackingStoreNotSameHost)
 		}
 
-		if err := action.BackingStore(util.LibvirtNamespacedName(backingStore.Namespace, backingStore.Name), backingStore.Status.Pool); err != nil {
+		if err := action.BackingStore(backingStore.Name, backingStore.Status.Pool); err != nil {
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
 				return err
 			}
