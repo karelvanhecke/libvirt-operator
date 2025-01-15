@@ -120,6 +120,7 @@ type DomainSpec struct {
 
 // +kubebuilder:validation:Optional
 type DomainStatus struct {
+	Name       string             `json:"name,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 

@@ -85,7 +85,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	defer end()
 
-	action, err := action.NewDomainAction(hostClient, util.LibvirtNamespacedName(domain.Namespace, domain.Name))
+	action, err := action.NewDomainAction(hostClient, domain.Name, string(domain.UID))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -119,6 +119,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if exists {
 		if !meta.IsStatusConditionTrue(domain.Status.Conditions, v1alpha1.ConditionReady) {
+			domain.Status.Name = action.Name()
 			if err := r.setStatusCondition(ctx, domain, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -155,7 +156,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if volume.Status.Host != domain.Spec.HostRef.Name {
 			return ctrl.Result{}, errors.New(ErrVolumeNotSameHost)
 		}
-		if err := action.Disk(util.LibvirtNamespacedName(volume.Namespace, volume.Name), volume.Status.Pool, disk.WWN, nil); err != nil {
+		if err := action.Disk(volume.Status.Name, volume.Status.Pool, disk.WWN, nil); err != nil {
 			return ctrl.Result{}, err
 		}
 		if util.SetLabel(&domain.ObjectMeta, v1alpha1.DiskLabelPrefix+"/"+volume.Name, "") {
@@ -262,7 +263,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, errors.New(ErrVolumeNotSameHost)
 		}
 		readonly := true
-		if err := action.Disk(util.LibvirtNamespacedName(ci.Namespace, CIPrefix+ci.Name), ci.Status.Pool, nil, &readonly); err != nil {
+		if err := action.Disk(ci.Status.Name, ci.Status.Pool, nil, &readonly); err != nil {
 			return ctrl.Result{}, err
 		}
 		if util.SetLabel(&domain.ObjectMeta, v1alpha1.CloudInitLabel, ci.Name) {
@@ -295,6 +296,8 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 	}
+
+	domain.Status.Name = action.Name()
 
 	return ctrl.Result{}, r.setStatusCondition(ctx, domain, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated)
 }
