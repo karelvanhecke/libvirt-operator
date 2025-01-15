@@ -97,7 +97,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, util.LibvirtNamespacedName(volume.Namespace, volume.Name), pool.Spec.Name)
+	action, err := action.NewVolumeAction(hostClient, volume.Name, string(volume.UID), pool.Spec.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -128,6 +128,9 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if action.State() {
 		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
+			volume.Status.Name = action.Name()
+			volume.Status.Pool = pool.Spec.Name
+			volume.Status.Host = pool.Spec.HostRef.Name
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -157,7 +160,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		} else {
 			if ok {
-				return ctrl.Result{}, action.LiveResize(util.LibvirtNamespacedName(d.Namespace, d.Name), u, v)
+				return ctrl.Result{}, action.LiveResize(d, u, v)
 			}
 		}
 		return ctrl.Result{}, action.Resize(u, v)
@@ -193,25 +196,25 @@ func (r *VolumeReconciler) isNotBackingStore(ctx context.Context, name string) (
 	return true, nil
 }
 
-func (r *VolumeReconciler) usedByDomain(ctx context.Context, name string) (domain v1alpha1.Domain, ok bool, err error) {
+func (r *VolumeReconciler) usedByDomain(ctx context.Context, name string) (domain string, ok bool, err error) {
 	labelSelector, err := labels.NewRequirement(v1alpha1.DiskLabelPrefix+"/"+name, selection.Equals, []string{""})
 	if err != nil {
-		return v1alpha1.Domain{}, false, err
+		return "", false, err
 	}
 	domains := &v1alpha1.DomainList{}
 	if err := r.List(ctx, domains, &client.ListOptions{LabelSelector: labels.NewSelector().Add(*labelSelector)}); err != nil {
-		return v1alpha1.Domain{}, false, err
+		return "", false, err
 	}
 
 	if len(domains.Items) > 1 {
-		return v1alpha1.Domain{}, false, errors.New(ErrVolumeMultipleDomains)
+		return "", false, errors.New(ErrVolumeMultipleDomains)
 	}
 
 	if len(domains.Items) == 0 {
-		return v1alpha1.Domain{}, false, nil
+		return "", false, nil
 	}
 
-	return domains.Items[0], true, nil
+	return domains.Items[0].Status.Name, true, nil
 }
 
 func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
@@ -282,7 +285,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 			return errors.New(ErrBackingStoreNotSameHost)
 		}
 
-		if err := action.BackingStore(util.LibvirtNamespacedName(backingStore.Namespace, backingStore.Name), backingStore.Status.Pool); err != nil {
+		if err := action.BackingStore(backingStore.Status.Name, backingStore.Status.Pool); err != nil {
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
 				return err
 			}
@@ -313,6 +316,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		}
 	}
 
+	volume.Status.Name = action.Name()
 	volume.Status.Pool = pool.Spec.Name
 	volume.Status.Host = pool.Spec.HostRef.Name
 

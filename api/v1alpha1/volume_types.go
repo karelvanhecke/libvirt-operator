@@ -68,6 +68,7 @@ type VolumeSpec struct {
 
 // +kubebuilder:validation:Optional
 type VolumeStatus struct {
+	Name       string             `json:"name,omitempty"`
 	Pool       string             `json:"pool,omitempty"`
 	Host       string             `json:"host,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`

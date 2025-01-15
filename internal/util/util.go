@@ -65,10 +65,6 @@ func ConvertToBytes(value uint64, unit string) uint64 {
 	return value * unitConversion[unit]
 }
 
-func LibvirtNamespacedName(namespace string, name string) string {
-	return namespace + ":" + name
-}
-
 func Marshal(buffer *bytes.Buffer, data any) ([]byte, error) {
 	enc := yaml.NewEncoder(buffer)
 	enc.SetIndent(2)
