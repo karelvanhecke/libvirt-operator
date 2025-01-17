@@ -13,7 +13,7 @@ require (
 	k8s.io/apimachinery v0.31.5
 	k8s.io/client-go v0.31.5
 	k8s.io/klog/v2 v2.130.1
-	libvirt.org/go/libvirtxml v1.11000.0
+	libvirt.org/go/libvirtxml v1.11000.1
 	sigs.k8s.io/controller-runtime v0.19.4
 )
 
