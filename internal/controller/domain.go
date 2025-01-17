@@ -27,7 +27,6 @@ import (
 	"github.com/karelvanhecke/libvirt-operator/internal/util"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,7 +55,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	host := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: domain.Spec.HostRef.Name, Namespace: domain.Namespace}, host); err != nil {
+	if err := r.Get(ctx, domain.HostRef(), host); err != nil {
 		if !meta.IsStatusConditionTrue(domain.Status.Conditions, v1alpha1.ConditionReady) {
 			if err := r.setStatusCondition(ctx, domain, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionUnmetRequirements); err != nil {
 				return ctrl.Result{}, err
@@ -143,7 +142,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	action.Memory(safecast.ToUint(domain.Spec.Memory.Value), domain.Spec.Memory.Unit)
 	for _, disk := range domain.Spec.Disks {
 		volume := &v1alpha1.Volume{}
-		if err := r.Get(ctx, types.NamespacedName{Name: disk.VolumeRef.Name, Namespace: domain.Namespace}, volume); err != nil {
+		if err := r.Get(ctx, domain.VolumeRef(disk), volume); err != nil {
 			return ctrl.Result{}, err
 		}
 		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
@@ -167,7 +166,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	for _, in := range domain.Spec.Interfaces {
 		network := &v1alpha1.Network{}
-		if err := r.Get(ctx, types.NamespacedName{Name: in.NetworkRef.Name, Namespace: domain.Namespace}, network); err != nil {
+		if err := r.Get(ctx, domain.NetworkRef(in), network); err != nil {
 			return ctrl.Result{}, err
 		}
 		if network.Spec.HostRef.Name != domain.Spec.HostRef.Name {
@@ -194,7 +193,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	for _, pci := range domain.Spec.PCIPassthrough {
 		pciDevice := &v1alpha1.PCIDevice{}
-		if err := r.Get(ctx, types.NamespacedName{Name: pci.PCIDeviceRef.Name, Namespace: domain.Namespace}, pciDevice); err != nil {
+		if err := r.Get(ctx, domain.PCIDeviceRef(pci), pciDevice); err != nil {
 			return ctrl.Result{}, err
 		}
 		if pciDevice.Spec.HostRef.Name != domain.Spec.HostRef.Name {
@@ -249,7 +248,7 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if cloudinit := domain.Spec.CloudInit; cloudinit != nil {
 		ci := &v1alpha1.CloudInit{}
-		if err := r.Get(ctx, types.NamespacedName{Name: cloudinit.CloudInitRef.Name, Namespace: domain.Namespace}, ci); err != nil {
+		if err := r.Get(ctx, domain.CloudInitRef(), ci); err != nil {
 			return ctrl.Result{}, err
 		}
 		if !meta.IsStatusConditionTrue(ci.Status.Conditions, v1alpha1.ConditionReady) {

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // +kubebuilder:validation:Enum=TLS;SSH
@@ -68,6 +69,10 @@ type AuthList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Auth `json:"items"`
+}
+
+func (a *Auth) SecretRef() types.NamespacedName {
+	return types.NamespacedName{Name: a.Spec.SecretRef.Name, Namespace: a.Namespace}
 }
 
 func init() {

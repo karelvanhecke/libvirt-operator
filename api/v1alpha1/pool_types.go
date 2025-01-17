@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type PoolSpec struct {
@@ -62,6 +63,10 @@ type PoolList struct {
 
 func (p *Pool) ResourceName() string {
 	return p.Spec.Name
+}
+
+func (p *Pool) HostRef() types.NamespacedName {
+	return types.NamespacedName{Name: p.Spec.HostRef.Name, Namespace: p.Namespace}
 }
 
 func init() {

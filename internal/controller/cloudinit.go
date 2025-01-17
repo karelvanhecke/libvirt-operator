@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -212,12 +211,12 @@ func (r *CloudInitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *CloudInitReconciler) resolveRefs(ctx context.Context, ci *v1alpha1.CloudInit) (*v1alpha1.Pool, *v1alpha1.Host, error) {
 	pool := &v1alpha1.Pool{}
-	if err := r.Get(ctx, types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}, pool); err != nil {
+	if err := r.Get(ctx, ci.PoolRef(), pool); err != nil {
 		return nil, nil, err
 	}
 
 	host := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: ci.Namespace}, host); err != nil {
+	if err := r.Get(ctx, pool.HostRef(), host); err != nil {
 		return nil, nil, err
 	}
 

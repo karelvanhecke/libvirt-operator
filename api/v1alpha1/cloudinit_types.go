@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type CloudInitMetadata struct {
@@ -492,6 +493,10 @@ type CloudInitList struct {
 
 func (ci *CloudInit) ResourceName() string {
 	return ci.Name + ".cidata.iso"
+}
+
+func (ci *CloudInit) PoolRef() types.NamespacedName {
+	return types.NamespacedName{Name: ci.Spec.PoolRef.Name, Namespace: ci.Namespace}
 }
 
 func init() {

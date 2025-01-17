@@ -103,7 +103,7 @@ func (r *HostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	auth := &v1alpha1.Auth{}
 
-	if err := r.Get(ctx, types.NamespacedName{Name: host.Spec.AuthRef.Name, Namespace: host.Namespace}, auth); err != nil {
+	if err := r.Get(ctx, host.AuthRef(), auth); err != nil {
 		return ctrl.Result{}, err
 	}
 

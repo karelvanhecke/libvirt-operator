@@ -86,7 +86,7 @@ func (r *AuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	secret := &corev1.Secret{}
 
-	if err := r.Get(ctx, types.NamespacedName{Name: auth.Spec.SecretRef.Name, Namespace: auth.Namespace}, secret); err != nil {
+	if err := r.Get(ctx, auth.SecretRef(), secret); err != nil {
 		return ctrl.Result{}, err
 	}
 

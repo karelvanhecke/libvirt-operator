@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type PCIDeviceSpec struct {
@@ -61,6 +62,10 @@ type PCIDeviceList struct {
 
 func (pd *PCIDevice) ResourceName() string {
 	return pd.Spec.Name
+}
+
+func (pd *PCIDevice) HostRef() types.NamespacedName {
+	return types.NamespacedName{Name: pd.Spec.HostRef.Name, Namespace: pd.Namespace}
 }
 
 func init() {
