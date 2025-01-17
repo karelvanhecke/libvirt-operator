@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -263,7 +262,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		}
 	case volume.Spec.BackingStoreRef != nil:
 		backingStore := &v1alpha1.Volume{}
-		if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.BackingStoreRef.Name, Namespace: volume.Namespace}, backingStore); err != nil {
+		if err := r.Get(ctx, volume.BackingStoreRef(), backingStore); err != nil {
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionUnmetRequirements); err != nil {
 				return err
 			}
@@ -323,12 +322,12 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 
 func (r *VolumeReconciler) resolveRefs(ctx context.Context, volume *v1alpha1.Volume) (*v1alpha1.Pool, *v1alpha1.Host, error) {
 	pool := &v1alpha1.Pool{}
-	if err := r.Get(ctx, types.NamespacedName{Name: volume.Spec.PoolRef.Name, Namespace: volume.Namespace}, pool); err != nil {
+	if err := r.Get(ctx, volume.PoolRef(), pool); err != nil {
 		return nil, nil, err
 	}
 
 	host := &v1alpha1.Host{}
-	if err := r.Get(ctx, types.NamespacedName{Name: pool.Spec.HostRef.Name, Namespace: volume.Namespace}, host); err != nil {
+	if err := r.Get(ctx, pool.HostRef(), host); err != nil {
 		return nil, nil, err
 	}
 

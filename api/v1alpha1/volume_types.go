@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type VolumeSize struct {
@@ -93,6 +94,17 @@ type VolumeList struct {
 
 func (v *Volume) ResourceName() string {
 	return v.Name + "." + v.Spec.Format
+}
+
+func (v *Volume) PoolRef() types.NamespacedName {
+	return types.NamespacedName{Name: v.Spec.PoolRef.Name, Namespace: v.Namespace}
+}
+
+func (v *Volume) BackingStoreRef() types.NamespacedName {
+	if v.Spec.BackingStoreRef == nil {
+		return types.NamespacedName{}
+	}
+	return types.NamespacedName{Name: v.Spec.BackingStoreRef.Name, Namespace: v.Namespace}
 }
 
 func init() {

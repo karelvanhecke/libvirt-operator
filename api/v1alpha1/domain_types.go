@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type DomainVCPU struct {
@@ -143,6 +144,26 @@ type DomainList struct {
 
 func (d *Domain) ResourceName() string {
 	return d.Name
+}
+
+func (d *Domain) HostRef() types.NamespacedName {
+	return types.NamespacedName{Name: d.Spec.HostRef.Name, Namespace: d.Namespace}
+}
+
+func (d *Domain) VolumeRef(disk DomainDisk) types.NamespacedName {
+	return types.NamespacedName{Name: disk.VolumeRef.Name, Namespace: d.Namespace}
+}
+
+func (d *Domain) NetworkRef(in DomainInterface) types.NamespacedName {
+	return types.NamespacedName{Name: in.NetworkRef.Name, Namespace: d.Namespace}
+}
+
+func (d *Domain) PCIDeviceRef(pci DomainPCIPassthrough) types.NamespacedName {
+	return types.NamespacedName{Name: pci.PCIDeviceRef.Name, Namespace: d.Namespace}
+}
+
+func (d *Domain) CloudInitRef() types.NamespacedName {
+	return types.NamespacedName{Name: d.Spec.CloudInit.CloudInitRef.Name, Namespace: d.Namespace}
 }
 
 func init() {

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type HostSpec struct {
@@ -72,6 +73,10 @@ type HostList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Host `json:"items"`
+}
+
+func (h *Host) AuthRef() types.NamespacedName {
+	return types.NamespacedName{Name: h.Spec.AuthRef.Name, Namespace: h.Namespace}
 }
 
 func init() {

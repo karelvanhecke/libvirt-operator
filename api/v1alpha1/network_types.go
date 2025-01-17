@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type NetworkSpec struct {
@@ -52,6 +53,10 @@ type NetworkList struct {
 
 func (n *Network) ResourceName() string {
 	return n.Spec.Name
+}
+
+func (n *Network) HostRef() types.NamespacedName {
+	return types.NamespacedName{Name: n.Spec.HostRef.Name, Namespace: n.Namespace}
 }
 
 func init() {
