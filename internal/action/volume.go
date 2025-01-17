@@ -244,6 +244,11 @@ func (a *VolumeAction) Resize(unit string, value uint64) error {
 func (a *VolumeAction) LiveResize(domain string, unit string, value uint64) error {
 	dom, err := a.DomainLookupByName(domain)
 	if err != nil {
+		if err, ok := err.(libvirt.Error); ok {
+			if err.Code == uint32(libvirt.ErrNoDomain) {
+				return a.Resize(unit, value)
+			}
+		}
 		return err
 	}
 
