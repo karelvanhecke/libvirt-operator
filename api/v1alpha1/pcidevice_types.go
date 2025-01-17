@@ -59,6 +59,10 @@ type PCIDeviceList struct {
 	Items []PCIDevice `json:"items"`
 }
 
+func (pd *PCIDevice) ResourceName() string {
+	return pd.Spec.Name
+}
+
 func init() {
 	SchemeBuilder.Register(&PCIDevice{}, &PCIDeviceList{})
 }

@@ -113,7 +113,7 @@ func (r *PCIDeviceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	defer end()
 
-	probe, err := probe.NewPCIDeviceProbe(hostClient, pciDevice.Spec.Name)
+	probe, err := probe.NewPCIDeviceProbe(hostClient, pciDevice.ResourceName())
 	if err != nil {
 		if err := r.setStatusCondition(ctx, pciDevice, v1alpha1.ConditionProbed, metav1.ConditionFalse, "Probe could not be completed: "+err.Error(), v1alpha1.ConditionError); err != nil {
 			return ctrl.Result{}, err

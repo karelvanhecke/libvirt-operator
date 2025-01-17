@@ -53,10 +53,10 @@ type VolumeAction struct {
 	source *os.File
 }
 
-func NewVolumeAction(client host.Client, name string, uuid string, pool string) (*VolumeAction, error) {
+func NewVolumeAction(client host.Client, name string, pool string) (*VolumeAction, error) {
 	a := &VolumeAction{
 		Client:   client,
-		name:     genName(name, uuid),
+		name:     name,
 		poolName: pool,
 	}
 
@@ -91,10 +91,6 @@ func NewVolumeAction(client host.Client, name string, uuid string, pool string) 
 	}
 
 	return a, nil
-}
-
-func (a *VolumeAction) Name() string {
-	return a.name
 }
 
 func (a *VolumeAction) State() (exists bool) {

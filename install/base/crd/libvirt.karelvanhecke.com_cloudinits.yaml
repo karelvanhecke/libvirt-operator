@@ -1323,8 +1323,6 @@ spec:
                 type: array
               host:
                 type: string
-              name:
-                type: string
               pool:
                 type: string
             type: object
