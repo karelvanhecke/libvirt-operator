@@ -467,7 +467,6 @@ type CloudInitSpec struct {
 
 // +kubebuilder:validation:Optional
 type CloudInitStatus struct {
-	Name       string             `json:"name,omitempty"`
 	Pool       string             `json:"pool,omitempty"`
 	Host       string             `json:"host,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
@@ -489,6 +488,10 @@ type CloudInitList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []CloudInit `json:"items"`
+}
+
+func (ci *CloudInit) ResourceName() string {
+	return ci.Name + ".cidata.iso"
 }
 
 func init() {

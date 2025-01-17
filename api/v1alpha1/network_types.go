@@ -50,6 +50,10 @@ type NetworkList struct {
 	Items []Network `json:"items"`
 }
 
+func (n *Network) ResourceName() string {
+	return n.Spec.Name
+}
+
 func init() {
 	SchemeBuilder.Register(&Network{}, &NetworkList{})
 }

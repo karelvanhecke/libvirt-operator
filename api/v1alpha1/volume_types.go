@@ -68,7 +68,6 @@ type VolumeSpec struct {
 
 // +kubebuilder:validation:Optional
 type VolumeStatus struct {
-	Name       string             `json:"name,omitempty"`
 	Pool       string             `json:"pool,omitempty"`
 	Host       string             `json:"host,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
@@ -90,6 +89,10 @@ type VolumeList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Volume `json:"items"`
+}
+
+func (v *Volume) ResourceName() string {
+	return v.Name + "." + v.Spec.Format
 }
 
 func init() {

@@ -95,7 +95,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, ci.Name, string(ci.UID), pool.Spec.Name)
+	action, err := action.NewVolumeAction(hostClient, ci.ResourceName(), pool.ResourceName())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -138,8 +138,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if exists {
 		if !meta.IsStatusConditionTrue(ci.Status.Conditions, v1alpha1.ConditionReady) {
-			ci.Status.Name = action.Name()
-			ci.Status.Pool = pool.Spec.Name
+			ci.Status.Pool = pool.ResourceName()
 			ci.Status.Host = pool.Spec.HostRef.Name
 			if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 				return ctrl.Result{}, err
@@ -193,8 +192,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	ci.Status.Name = action.Name()
-	ci.Status.Pool = pool.Spec.Name
+	ci.Status.Pool = pool.ResourceName()
 	ci.Status.Host = pool.Spec.HostRef.Name
 
 	if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {

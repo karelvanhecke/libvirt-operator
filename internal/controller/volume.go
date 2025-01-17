@@ -97,7 +97,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	defer end()
 
-	action, err := action.NewVolumeAction(hostClient, volume.Name, string(volume.UID), pool.Spec.Name)
+	action, err := action.NewVolumeAction(hostClient, volume.ResourceName(), pool.ResourceName())
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -128,8 +128,7 @@ func (r *VolumeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if action.State() {
 		if !meta.IsStatusConditionTrue(volume.Status.Conditions, v1alpha1.ConditionReady) {
-			volume.Status.Name = action.Name()
-			volume.Status.Pool = pool.Spec.Name
+			volume.Status.Pool = pool.ResourceName()
 			volume.Status.Host = pool.Spec.HostRef.Name
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated); err != nil {
 				return ctrl.Result{}, err
@@ -214,7 +213,7 @@ func (r *VolumeReconciler) usedByDomain(ctx context.Context, name string) (domai
 		return "", false, nil
 	}
 
-	return domains.Items[0].Status.Name, true, nil
+	return domains.Items[0].ResourceName(), true, nil
 }
 
 func (r *VolumeReconciler) delete(ctx context.Context, volume *v1alpha1.Volume, action *action.VolumeAction) error {
@@ -285,7 +284,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 			return errors.New(ErrBackingStoreNotSameHost)
 		}
 
-		if err := action.BackingStore(backingStore.Status.Name, backingStore.Status.Pool); err != nil {
+		if err := action.BackingStore(backingStore.ResourceName(), backingStore.Status.Pool); err != nil {
 			if err := r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
 				return err
 			}
@@ -316,8 +315,7 @@ func (r *VolumeReconciler) create(ctx context.Context, volume *v1alpha1.Volume, 
 		}
 	}
 
-	volume.Status.Name = action.Name()
-	volume.Status.Pool = pool.Spec.Name
+	volume.Status.Pool = pool.ResourceName()
 	volume.Status.Host = pool.Spec.HostRef.Name
 
 	return r.setStatusCondition(ctx, volume, v1alpha1.ConditionReady, metav1.ConditionTrue, conditionCreationSucceeded, v1alpha1.ConditionCreated)

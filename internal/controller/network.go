@@ -111,7 +111,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	defer end()
 
-	probe, err := probe.NewNetworkProbe(hostClient, network.Spec.Name)
+	probe, err := probe.NewNetworkProbe(hostClient, network.ResourceName())
 	if err != nil {
 		if err := r.setStatusCondition(ctx, network, v1alpha1.ConditionProbed, metav1.ConditionFalse, "Probe could not be completed: "+err.Error(), v1alpha1.ConditionError); err != nil {
 			return ctrl.Result{}, err

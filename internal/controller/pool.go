@@ -121,7 +121,7 @@ func (r *PoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 	defer end()
 
-	probe, err := probe.NewPoolProbe(hostClient, pool.Spec.Name)
+	probe, err := probe.NewPoolProbe(hostClient, pool.ResourceName())
 	if err != nil {
 		if err := r.setStatusCondition(ctx, pool, v1alpha1.ConditionProbed, metav1.ConditionFalse, "Probe could not be completed: "+err.Error(), v1alpha1.ConditionError); err != nil {
 			return ctrl.Result{}, err

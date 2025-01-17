@@ -60,6 +60,10 @@ type PoolList struct {
 	Items []Pool `json:"items"`
 }
 
+func (p *Pool) ResourceName() string {
+	return p.Spec.Name
+}
+
 func init() {
 	SchemeBuilder.Register(&Pool{}, &PoolList{})
 }

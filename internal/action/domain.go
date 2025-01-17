@@ -42,10 +42,10 @@ type DomainAction struct {
 	state int32
 }
 
-func NewDomainAction(client host.Client, name string, uuid string) (*DomainAction, error) {
+func NewDomainAction(client host.Client, name string) (*DomainAction, error) {
 	a := &DomainAction{
 		Client: client,
-		name:   genName(name, uuid),
+		name:   name,
 	}
 
 	id, err := a.DomainLookupByName(a.name)
@@ -63,7 +63,6 @@ func NewDomainAction(client host.Client, name string, uuid string) (*DomainActio
 						APIC: &libvirtxml.DomainFeatureAPIC{},
 					},
 					Name:   a.name,
-					UUID:   uuid,
 					VCPU:   &libvirtxml.DomainVCPU{},
 					Memory: &libvirtxml.DomainMemory{},
 					Devices: &libvirtxml.DomainDeviceList{
@@ -140,10 +139,6 @@ func NewDomainAction(client host.Client, name string, uuid string) (*DomainActio
 	}
 
 	return a, nil
-}
-
-func (a *DomainAction) Name() string {
-	return a.name
 }
 
 func (a *DomainAction) State() (exists bool, shutoff bool) {
