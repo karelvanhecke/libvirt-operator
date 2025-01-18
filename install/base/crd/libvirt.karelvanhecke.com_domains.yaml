@@ -91,6 +91,12 @@ spec:
                 x-kubernetes-validations:
                 - message: can not change disks of existing domain
                   rule: oldSelf == self
+              generateName:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change generateName of external resource
+                  rule: oldSelf == self
               hostRef:
                 properties:
                   name:
@@ -154,6 +160,12 @@ spec:
                 type: object
                 x-kubernetes-validations:
                 - message: can not change memory of existing domain
+                  rule: oldSelf == self
+              name:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change name of external resource
                   rule: oldSelf == self
               numatuneMode:
                 enum:
@@ -227,6 +239,8 @@ spec:
             - message: SecureBoot requires UEFI to be enabled
               rule: 'has(self.secureBoot) && self.secureBoot ? !has(self.uefi) ||
                 self.uefi : true'
+            - message: name or generateName must be defined
+              rule: has(self.name) || has(self.generateName)
           status:
             properties:
               conditions:

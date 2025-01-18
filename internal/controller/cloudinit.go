@@ -146,15 +146,7 @@ func (r *CloudInitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	metadata := ci.Spec.Metadata
-	if metadata == nil {
-		metadata = &v1alpha1.CloudInitMetadata{
-			InstanceID:    string(ci.UID),
-			LocalHostname: ci.Name,
-		}
-	}
-
-	sourceFiles, size, err := cloudInitSourceFiles(metadata, ci.Spec.UserData, ci.Spec.NetworkConfig, ci.Spec.VendorData)
+	sourceFiles, size, err := cloudInitSourceFiles(ci.Spec.Metadata, ci.Spec.UserData, ci.Spec.NetworkConfig, ci.Spec.VendorData)
 	if err != nil {
 		if err := r.setStatusCondition(ctx, ci, v1alpha1.ConditionReady, metav1.ConditionFalse, err.Error(), v1alpha1.ConditionError); err != nil {
 			return ctrl.Result{}, err

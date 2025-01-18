@@ -17,15 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/karelvanhecke/libvirt-operator/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type CloudInitMetadata struct {
 	// +kubebuilder:validation:Required
-	InstanceID string `json:"instanceID" yaml:"instance-id"`
-	// +kubebuilder:validation:Required
 	LocalHostname string `json:"localHostname" yaml:"local-hostname"`
+	// +kubebuilder:validation:Optional
+	InstanceID *string `json:"instanceID,omitempty" yaml:"instance-id,omitempty"`
 }
 
 type CloudInitUser struct {
@@ -454,6 +455,7 @@ type CloudInitNetworkConfig struct {
 
 // +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change existing cloud init data store"
 type CloudInitSpec struct {
+	ExternalResourceMeta `json:",inline"`
 	// +kubebuilder:validation:Required
 	PoolRef ResourceRef `json:"poolRef"`
 	// +kubebuilder:validation:Optional
@@ -492,7 +494,11 @@ type CloudInitList struct {
 }
 
 func (ci *CloudInit) ResourceName() string {
-	return ci.Name + ".cidata.iso"
+	return ci.Spec.Name
+}
+
+func (ci *CloudInit) SetGeneratedResourceName() {
+	ci.Spec.Name = resource.GenerateName(ci.Spec.GenerateName)
 }
 
 func (ci *CloudInit) PoolRef() types.NamespacedName {
