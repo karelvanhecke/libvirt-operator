@@ -1,0 +1,11 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: libvirt-operator
+
+commonAnnotations:
+  cert-manager.io/inject-ca-from: libvirt-operator/webhook-service
+
+resources:
+  - manifests.yaml

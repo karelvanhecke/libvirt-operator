@@ -25,6 +25,7 @@ import (
 	"github.com/karelvanhecke/libvirt-operator/api/v1alpha1"
 	"github.com/karelvanhecke/libvirt-operator/internal/controller"
 	"github.com/karelvanhecke/libvirt-operator/internal/store"
+	"github.com/karelvanhecke/libvirt-operator/internal/webhook"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -71,6 +72,14 @@ func NewOperatorCmd() *cobra.Command {
 
 	return cmd
 }
+
+// +kubebuilder:webhook:path=/mutate-libvirt-karelvanhecke-com-v1alpha1-cloudinit,failurePolicy=fail,mutating=true,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=cloudinits,verbs=create,versions=v1alpha1,name=cloudinit-v1alpha1.libvirt.karelvanhecke.com
+// +kubebuilder:webhook:path=/mutate-libvirt-karelvanhecke-com-v1alpha1-domain,failurePolicy=fail,mutating=true,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=domains,verbs=create,versions=v1alpha1,name=domains-v1alpha1.libvirt.karelvanhecke.com
+// +kubebuilder:webhook:path=/mutate-libvirt-karelvanhecke-com-v1alpha1-volume,failurePolicy=fail,mutating=true,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=volumes,verbs=create,versions=v1alpha1,name=volumes-v1alpha1.libvirt.karelvanhecke.com
+
+// +kubebuilder:webhook:path=/validate-libvirt-karelvanhecke-com-v1alpha1-cloudinit,failurePolicy=fail,mutating=false,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=cloudinits,verbs=create,versions=v1alpha1,name=cloudinit-v1alpha1.libvirt.karelvanhecke.com
+// +kubebuilder:webhook:path=/validate-libvirt-karelvanhecke-com-v1alpha1-domain,failurePolicy=fail,mutating=false,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=domains,verbs=create,versions=v1alpha1,name=domains-v1alpha1.libvirt.karelvanhecke.com
+// +kubebuilder:webhook:path=/validate-libvirt-karelvanhecke-com-v1alpha1-volume,failurePolicy=fail,mutating=false,admissionReviewVersions=v1,sideEffects=None,groups=libvirt.karelvanhecke.com,resources=volumes,verbs=create,versions=v1alpha1,name=volumes-v1alpha1.libvirt.karelvanhecke.com
 
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=domains,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:namespace=libvirt-operator,groups=libvirt.karelvanhecke.com,resources=domains/status,verbs=get;update;patch
@@ -203,7 +212,7 @@ func runOperator() {
 		Client:    mgr.GetClient(),
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "failed to setup pool controller with manager")
+		setupLog.Error(err, "failed to setup network controller with manager")
 		os.Exit(1)
 	}
 
@@ -211,7 +220,7 @@ func runOperator() {
 		Client:    mgr.GetClient(),
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "failed to setup pool controller with manager")
+		setupLog.Error(err, "failed to setup pci device controller with manager")
 		os.Exit(1)
 	}
 
@@ -227,7 +236,7 @@ func runOperator() {
 		Client:    mgr.GetClient(),
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "failed to setup volume controller with manager")
+		setupLog.Error(err, "failed to setup cloud-init controller with manager")
 		os.Exit(1)
 	}
 
@@ -236,6 +245,21 @@ func runOperator() {
 		HostStore: hostStore,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "failed to setup domain controller with manager")
+		os.Exit(1)
+	}
+
+	if err := webhook.SetupVolumeWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup volume webhook with manager")
+		os.Exit(1)
+	}
+
+	if err := webhook.SetupCloudInitWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup cloud-init webhook with manager")
+		os.Exit(1)
+	}
+
+	if err := webhook.SetupDomainWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "failed to setup domain webhook with manager")
 		os.Exit(1)
 	}
 

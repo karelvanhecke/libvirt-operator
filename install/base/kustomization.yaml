@@ -5,7 +5,11 @@ kind: Kustomization
 resources:
   - crd
   - namespace.yaml
+  - webhook
+  - cert-manager.yaml
+  - service.yaml
   - role.yaml
   - service-account.yaml
   - role-binding.yaml
+  - network-policy.yaml
   - deployment.yaml

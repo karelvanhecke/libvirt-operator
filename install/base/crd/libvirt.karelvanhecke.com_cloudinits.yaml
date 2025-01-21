@@ -37,6 +37,12 @@ spec:
             type: object
           spec:
             properties:
+              generateName:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change generateName of external resource
+                  rule: oldSelf == self
               metadata:
                 properties:
                   instanceID:
@@ -44,9 +50,14 @@ spec:
                   localHostname:
                     type: string
                 required:
-                - instanceID
                 - localHostname
                 type: object
+              name:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change name of external resource
+                  rule: oldSelf == self
               networkConfig:
                 properties:
                   bonds:
@@ -1263,6 +1274,8 @@ spec:
             x-kubernetes-validations:
             - message: can not change existing cloud init data store
               rule: oldSelf == self
+            - message: name or generateName must be defined
+              rule: has(self.name) || has(self.generateName)
           status:
             properties:
               conditions:

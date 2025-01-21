@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/karelvanhecke/libvirt-operator/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -78,6 +79,7 @@ type DomainPCIPassthrough struct {
 
 // +kubebuilder:validation:XValidation:rule="has(self.secureBoot) && self.secureBoot ? !has(self.uefi) || self.uefi : true",message="SecureBoot requires UEFI to be enabled"
 type DomainSpec struct {
+	ExternalResourceMeta `json:",inline"`
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change host of existing domain"
 	// +kubebuilder:validation:Required
 	HostRef ResourceRef `json:"hostRef"`
@@ -143,7 +145,11 @@ type DomainList struct {
 }
 
 func (d *Domain) ResourceName() string {
-	return d.Name
+	return d.Spec.Name
+}
+
+func (d *Domain) SetGeneratedResourceName() {
+	d.Spec.Name = resource.GenerateName(d.Spec.GenerateName)
 }
 
 func (d *Domain) HostRef() types.NamespacedName {

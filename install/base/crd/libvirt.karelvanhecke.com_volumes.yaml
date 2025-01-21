@@ -56,6 +56,18 @@ spec:
                 x-kubernetes-validations:
                 - message: can not change format of existing volume
                   rule: oldSelf == self
+              generateName:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change generateName of external resource
+                  rule: oldSelf == self
+              name:
+                pattern: ^[A-Za-z0-9\-.:_]+$
+                type: string
+                x-kubernetes-validations:
+                - message: can not change name of external resource
+                  rule: oldSelf == self
               poolRef:
                 properties:
                   name:
@@ -131,6 +143,8 @@ spec:
                 : true'
             - message: backing store can only be used with the qcow2 format
               rule: 'has(self.backingStoreRef) ? self.format == ''qcow2'' : true'
+            - message: name or generateName must be defined
+              rule: has(self.name) || has(self.generateName)
           status:
             properties:
               conditions:

@@ -21,3 +21,16 @@ type ResourceRef struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 }
+
+// +kubebuilder:validation:Required
+// +kubebuilder:validation:XValidation:rule="has(self.name) || has(self.generateName)",message="name or generateName must be defined"
+type ExternalResourceMeta struct {
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change name of external resource"
+	// +kubebuilder:validation:Pattern="^[A-Za-z0-9\\-.:_]+$"
+	// +kubebuilder:validation:Optional
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change generateName of external resource"
+	// +kubebuilder:validation:Pattern="^[A-Za-z0-9\\-.:_]+$"
+	// +kubebuilder:validation:Optional
+	GenerateName string `json:"generateName,omitempty"`
+}

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/karelvanhecke/libvirt-operator/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -46,6 +47,7 @@ type VolumeSource struct {
 // +kubebuilder:validation:XValidation:rule="!has(self.size) ? has(self.backingStoreRef) || has(self.source) : true",message="size can only be omitted when a source or backing store or defined"
 // +kubebuilder:validation:XValidation:rule="has(self.backingStoreRef) ? self.format == 'qcow2' : true",message="backing store can only be used with the qcow2 format"
 type VolumeSpec struct {
+	ExternalResourceMeta `json:",inline"`
 	// +kubebuilder:validation:XValidation:rule="oldSelf == self",message="can not change format of existing volume"
 	// +kubebuilder:validation:Enum=qcow2;raw
 	// +kubebuilder:validation:Required
@@ -93,7 +95,11 @@ type VolumeList struct {
 }
 
 func (v *Volume) ResourceName() string {
-	return v.Name + "." + v.Spec.Format
+	return v.Spec.Name
+}
+
+func (v *Volume) SetGeneratedResourceName() {
+	v.Spec.Name = resource.GenerateName(v.Spec.GenerateName)
 }
 
 func (v *Volume) PoolRef() types.NamespacedName {
