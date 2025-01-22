@@ -36,6 +36,7 @@ jobs:
         with:
           languages: go
           build-mode: autobuild
-      
+          dependency-caching: true
+
       - name: Analyze
         uses: github/codeql-action/analyze@d68b2d4edb4189fd2a5366ac14e72027bd4b37dd # v3.28.2
