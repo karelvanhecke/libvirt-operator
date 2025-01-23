@@ -7,7 +7,7 @@ CONTROLLER_GEN_VERSION=v0.17.1
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
 KUBECTL_VERSION=v1.31.5
 # renovate: datasource=docker depName=kindest/node versioning=semver
-KIND_IMAGE_VERSION=v1.31.4@sha256:2cb39f7295fe7eafee0842b1052a599a4fb0f8bcf3f83d96c7f4864c357c6c30
+KIND_IMAGE_VERSION=v1.32.1@sha256:6afef2b7f69d627ea7bf27ee6696b6868d18e03bf98167c420df486da4662db6
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
 CERT_MANAGER_VERSION=v1.16.3
 HEADERFILE=./hack/boilerplate.go.txt
