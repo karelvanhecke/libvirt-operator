@@ -70,13 +70,6 @@
             "minimumReleaseAge": "1 day"
         },
         {
-            "matchDepNames": "go",
-            "matchFileNames": ["go.mod"],
-            "matchDatasources": ["golang-version"],
-            "matchUpdateTypes": ["patch"],
-            "enabled": false
-        },
-        {
             "matchDepNames":[
                 "ghcr.io/renovatebot/renovate"
             ],
