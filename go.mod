@@ -3,7 +3,7 @@ module github.com/karelvanhecke/libvirt-operator
 go 1.23.6
 
 require (
-	github.com/ARM-software/golang-utils/utils v1.80.1
+	github.com/ARM-software/golang-utils/utils v1.80.2
 	github.com/digitalocean/go-libvirt v0.0.0-20250124203551-ab4e783fc40f
 	github.com/diskfs/go-diskfs v1.5.0
 	github.com/go-logr/logr v1.4.2
@@ -54,10 +54,10 @@ require (
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
