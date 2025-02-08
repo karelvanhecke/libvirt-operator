@@ -10,8 +10,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/digitalocean/go-libvirt v0.0.0-20250124203551-ab4e783fc40f h1:yXVSukLHmj622cpzEICyzGgdA2TjJMICCgWcxf6A8FM=
-github.com/digitalocean/go-libvirt v0.0.0-20250124203551-ab4e783fc40f/go.mod h1:7qBQcBhg2TPS5w+YRRODAuBfhpjMmO8CZ1SJbzEMXw8=
+github.com/digitalocean/go-libvirt v0.0.0-20250207191401-950a7b2d7eaf h1:EOLiDMSWnGsvfiBNVhBgaYCJLb8C0vDiJQWyp2eL4KQ=
+github.com/digitalocean/go-libvirt v0.0.0-20250207191401-950a7b2d7eaf/go.mod h1:7qBQcBhg2TPS5w+YRRODAuBfhpjMmO8CZ1SJbzEMXw8=
 github.com/diskfs/go-diskfs v1.5.0 h1:0SANkrab4ifiZBytk380gIesYh5Gc+3i40l7qsrYP4s=
 github.com/diskfs/go-diskfs v1.5.0/go.mod h1:bRFumZeGFCO8C2KNswrQeuj2m1WCVr4Ms5IjWMczMDk=
 github.com/djherbis/times v1.6.0 h1:w2ctJ92J8fBvWPxugmXIv7Nz7Q3iDMKNx9v5ocVH20c=
