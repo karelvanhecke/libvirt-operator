@@ -1,6 +1,6 @@
 module github.com/karelvanhecke/libvirt-operator
 
-go 1.23.6
+go 1.24.0
 
 require (
 	github.com/ARM-software/golang-utils/utils v1.82.0
