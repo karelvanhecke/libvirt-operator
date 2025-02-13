@@ -9,7 +9,7 @@ KUBECTL_VERSION=v1.31.5
 # renovate: datasource=docker depName=kindest/node versioning=semver
 KIND_IMAGE_VERSION=v1.31.4@sha256:2cb39f7295fe7eafee0842b1052a599a4fb0f8bcf3f83d96c7f4864c357c6c30
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
-CERT_MANAGER_VERSION=v1.17.0
+CERT_MANAGER_VERSION=v1.17.1
 HEADERFILE=./hack/boilerplate.go.txt
 ROLENAME=libvirt-operator
 
