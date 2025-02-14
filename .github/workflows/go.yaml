@@ -5,7 +5,7 @@ env:
   # renovate: datasource=golang-version depName=go
   GO_VERSION: '1.24.0'
   # renovate: datasource=github-releases depName=golangci/golangci-lint versioning=semver
-  GOLANG_CI_VERSION: 'v1.64.4'
+  GOLANG_CI_VERSION: 'v1.64.5'
 
 on:
   pull_request:
