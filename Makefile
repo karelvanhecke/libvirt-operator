@@ -1,7 +1,7 @@
 VERSION?=sha-$(shell git rev-parse HEAD)
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/kind versioning=semver
-KIND_VERSION=v0.26.0
+KIND_VERSION=v0.27.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
 CONTROLLER_GEN_VERSION=v0.17.2
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
