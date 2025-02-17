@@ -7,7 +7,7 @@ require (
 	github.com/digitalocean/go-libvirt v0.0.0-20250124203551-ab4e783fc40f
 	github.com/diskfs/go-diskfs v1.5.0
 	github.com/go-logr/logr v1.4.2
-	github.com/spf13/cobra v1.9.0
+	github.com/spf13/cobra v1.9.1
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.31.6
 	k8s.io/apimachinery v0.31.6
