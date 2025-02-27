@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/ARM-software/golang-utils/utils v1.82.1
-	github.com/digitalocean/go-libvirt v0.0.0-20250124203551-ab4e783fc40f
+	github.com/digitalocean/go-libvirt v0.0.0-20250226181018-4d5f24afb7c2
 	github.com/diskfs/go-diskfs v1.5.1
 	github.com/go-logr/logr v1.4.2
 	github.com/spf13/cobra v1.9.1
@@ -51,7 +51,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.34.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
