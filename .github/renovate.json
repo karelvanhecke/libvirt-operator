@@ -83,10 +83,6 @@
             "matchFileNames": ["install/edge/kustomization.yaml"],
             "automerge": true,
             "schedule": null
-        },
-        {
-            "matchDepNames": ["karelvanhecke/release-please-action"],
-            "enabled": false
         }
     ],
     "timezone": "Europe/Brussels",
