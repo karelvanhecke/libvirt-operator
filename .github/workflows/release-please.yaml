@@ -19,7 +19,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_PLEASE_KEY }}
 
       - name: Run Release Please
-        uses: karelvanhecke/release-please-action@1877f2cef78c87e3cd02d9c0f2188267dfb285c3
+        uses: googleapis/release-please-action@d1a8f221d7723166f48a584aebba00ef3f6febec # v4.1.4
         with:
           token: ${{ steps.app-token.outputs.token }}
           config-file: .github/release-please-config.json
