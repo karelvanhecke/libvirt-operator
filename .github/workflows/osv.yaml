@@ -24,6 +24,7 @@ jobs:
     with:
       scan-args: |-
         --skip-git=true
+        --config=.github/osv.toml
         ./
 
   scan-pr:
@@ -33,4 +34,5 @@ jobs:
     with:
       scan-args: |-
         --skip-git=true
+        --config=.github/osv.toml
         ./
