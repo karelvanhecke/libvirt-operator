@@ -1,0 +1,7 @@
+[[IgnoredVulns]]
+id = "CVE-2025-22868"
+reason = "Indirect dependency: let upstream package handle this"
+
+[[IgnoredVulns]]
+id = "CVE-2025-22869"
+reason = "Indirect dependency: let upstream package handle this"
