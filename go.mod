@@ -14,7 +14,7 @@ require (
 	k8s.io/client-go v0.31.6
 	k8s.io/klog/v2 v2.130.1
 	libvirt.org/go/libvirtxml v1.11000.1
-	sigs.k8s.io/controller-runtime v0.19.6
+	sigs.k8s.io/controller-runtime v0.19.7
 )
 
 require (
