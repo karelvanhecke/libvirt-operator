@@ -4,7 +4,7 @@ kind: Kustomization
 
 images:
   - name: ghcr.io/karelvanhecke/libvirt-operator
-    newTag: edge@sha256:91b1dfadd5f568b9e4bb85dcaa453871cafc873ae0deda5bc13a4eedf9df4cf3
+    newTag: edge@sha256:25c094a9f1bdf2c193faf0bbacd66ab70d1c36b2fd4701034d87294d94819895
 
 resources:
   - ../base
