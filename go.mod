@@ -9,9 +9,9 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/spf13/cobra v1.9.1
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.32.1
-	k8s.io/apimachinery v0.32.1
-	k8s.io/client-go v0.32.1
+	k8s.io/api v0.32.2
+	k8s.io/apimachinery v0.32.2
+	k8s.io/client-go v0.32.2
 	k8s.io/klog/v2 v2.130.1
 	libvirt.org/go/libvirtxml v1.11000.1
 	sigs.k8s.io/controller-runtime v0.20.3
