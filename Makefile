@@ -5,7 +5,7 @@ KIND_VERSION=v0.27.0
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools versioning=semver
 CONTROLLER_GEN_VERSION=v0.17.2
 # renovate: datasource=github-releases depName=kubernetes/kubernetes versioning=semver
-KUBECTL_VERSION=v1.31.6
+KUBECTL_VERSION=v1.32.2
 # renovate: datasource=docker depName=kindest/node versioning=semver
 KIND_IMAGE_VERSION=v1.32.2@sha256:142f543559cc55d64e1ab9341df08e5ced84bd2e893736da8f51320f26f5950b
 # renovate: datasource=github-releases depName=cert-manager/cert-manager versioning=semver
