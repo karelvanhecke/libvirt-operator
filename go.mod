@@ -3,7 +3,7 @@ module github.com/karelvanhecke/libvirt-operator
 go 1.24.1
 
 require (
-	github.com/ARM-software/golang-utils/utils v1.87.0
+	github.com/ARM-software/golang-utils/utils v1.87.1
 	github.com/digitalocean/go-libvirt v0.0.0-20250313214939-3c0f2fe97d18
 	github.com/diskfs/go-diskfs v1.5.2
 	github.com/go-logr/logr v1.4.2
@@ -24,7 +24,7 @@ require (
 	github.com/djherbis/times v1.6.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
