@@ -83,6 +83,13 @@
             "matchFileNames": ["install/edge/kustomization.yaml"],
             "automerge": true,
             "schedule": null
+        },
+        {
+            "groupName": "golangci-lint",
+            "matchDepNames": [
+                "golangci/golangci-lint-action",
+                "golangci/golangci-lint"
+            ]
         }
     ],
     "timezone": "Europe/Brussels",
