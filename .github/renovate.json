@@ -90,6 +90,16 @@
                 "golangci/golangci-lint-action",
                 "golangci/golangci-lint"
             ]
+        },
+        {
+            "matchDepNames": [
+                "golangci/golangci-lint"
+            ],
+            "matchUpdateTypes": ["major"],
+            "postUpgradeTasks": {
+                "commands": ["golangci-lint migrate"],
+                "fileFilters": [".golangci.yaml"]
+            }
         }
     ],
     "timezone": "Europe/Brussels",
