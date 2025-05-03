@@ -1,5 +1,5 @@
-github.com/ARM-software/golang-utils/utils v1.93.0 h1:lrfhT8lFlNcR60gwIntGUcBXdSX2dUN/SR2MmJdvF6o=
-github.com/ARM-software/golang-utils/utils v1.93.0/go.mod h1:bBeEZK/kqT2EP2Q8Z1FZk5a2QkaBxhdPQNA5VKTEFOY=
+github.com/ARM-software/golang-utils/utils v1.94.0 h1:tJLviNHXSn0D35r1YdPWayf/SPKiixjT1FQaiL/K3Ks=
+github.com/ARM-software/golang-utils/utils v1.94.0/go.mod h1:6J3xP9Rbf544bDMrZCvJdW0KGuU22GVDEfqfWlABzPY=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
