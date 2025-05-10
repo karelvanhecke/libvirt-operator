@@ -31,5 +31,5 @@ jobs:
         with:
           configurationFile: .github/renovate.json
           # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate versioning=semver
-          renovate-version: 39.264.0@sha256:f2209c61a9c3c8c74ac58eecb5f15ec43651f1ba694aa33493ff2062b90ff4d3
+          renovate-version: 40.11.2@sha256:71cab175ae6a06243f3bab6be96d9a083894c7214505805c954dfd6c8b8db656
           token: '${{ steps.app-token.outputs.token }}'
