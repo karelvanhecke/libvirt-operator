@@ -4,7 +4,7 @@ go 1.24.3
 
 require (
 	github.com/ARM-software/golang-utils/utils v1.94.0
-	github.com/digitalocean/go-libvirt v0.0.0-20250411172002-3f9f68ae9150
+	github.com/digitalocean/go-libvirt v0.0.0-20250417173424-a6a66ef779d6
 	github.com/diskfs/go-diskfs v1.6.0
 	github.com/go-logr/logr v1.4.2
 	github.com/spf13/cobra v1.9.1
