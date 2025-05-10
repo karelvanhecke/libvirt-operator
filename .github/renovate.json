@@ -1,38 +1,52 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": ["config:best-practices"],
-    "repositories": ["karelvanhecke/libvirt-operator"],
+    "extends": [
+        "config:best-practices"
+    ],
+    "repositories": [
+        "karelvanhecke/libvirt-operator"
+    ],
     "requireConfig": "ignored",
     "onboarding": false,
     "platformCommit": "enabled",
     "postUpdateOptions": [
         "gomodTidy"
     ],
-    "customManagers":[
+    "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": "^(?:Makefile|\\.github/workflows/.+\\.yaml)$",
+            "managerFilePatterns": [
+                "/^(?:Makefile|\\.github/workflows/.+\\.yaml)$/"
+            ],
             "matchStrings": [
                 "# renovate: datasource=(?<datasource>[a-z-]+?) depName=(?<depName>.+?)(?: packageName=(?<packageName>.+?))?(?: versioning=(?<versioning>[a-z-]+?))?\\s+.+(?:_VERSION|-version)(?:=|: )'?(?<currentValue>v?[0-9.]+)(@(?<currentDigest>sha256:[a-f0-9]+))?'?"
             ]
         },
         {
             "customType": "regex",
-            "fileMatch": "^install/base/crd/.+\\.yaml$",
+            "managerFilePatterns": [
+                "/^install/base/crd/.+\\.yaml$/"
+            ],
             "depNameTemplate": "kubernetes-sigs/controller-tools",
             "datasourceTemplate": "github-releases",
             "versioningTemplate": "semver",
-            "matchStrings": ["controller-gen\\.kubebuilder\\.io/version: (?<currentValue>v?[0-9.]+)"]
+            "matchStrings": [
+                "controller-gen\\.kubebuilder\\.io/version: (?<currentValue>v?[0-9.]+)"
+            ]
         }
     ],
     "packageRules": [
         {
             "matchCurrentVersion": "!/^v?0/",
-            "matchUpdateTypes": ["minor"],
+            "matchUpdateTypes": [
+                "minor"
+            ],
             "automerge": true
         },
         {
-            "matchUpdateTypes": ["patch"],
+            "matchUpdateTypes": [
+                "patch"
+            ],
             "automerge": true
         },
         {
@@ -40,22 +54,26 @@
             "separateMinorPatch": true
         },
         {
-            "matchDepNames":[
+            "matchDepNames": [
                 "kubernetes/kubernetes",
                 "kindest/node"
             ],
             "separateMinorPatch": true
         },
         {
-            "matchUpdateTypes": ["minor"],
-            "matchDepNames":[
+            "matchUpdateTypes": [
+                "minor"
+            ],
+            "matchDepNames": [
                 "kubernetes/kubernetes",
                 "kindest/node"
             ],
             "automerge": false
         },
         {
-            "matchDatasources": ["golang-version"],
+            "matchDatasources": [
+                "golang-version"
+            ],
             "rangeStrategy": "bump"
         },
         {
@@ -70,7 +88,7 @@
             "minimumReleaseAge": "1 day"
         },
         {
-            "matchDepNames":[
+            "matchDepNames": [
                 "ghcr.io/renovatebot/renovate"
             ],
             "schedule": [
@@ -80,7 +98,9 @@
         },
         {
             "matchDepNames": "ghcr.io/karelvanhecke/libvirt-operator",
-            "matchFileNames": ["install/edge/kustomization.yaml"],
+            "matchFileNames": [
+                "install/edge/kustomization.yaml"
+            ],
             "automerge": true,
             "schedule": null
         },
@@ -95,10 +115,16 @@
             "matchDepNames": [
                 "golangci/golangci-lint"
             ],
-            "matchUpdateTypes": ["major"],
+            "matchUpdateTypes": [
+                "major"
+            ],
             "postUpgradeTasks": {
-                "commands": ["golangci-lint migrate"],
-                "fileFilters": [".golangci.yaml"]
+                "commands": [
+                    "golangci-lint migrate"
+                ],
+                "fileFilters": [
+                    ".golangci.yaml"
+                ]
             }
         }
     ],
